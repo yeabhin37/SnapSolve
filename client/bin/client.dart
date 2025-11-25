@@ -1,4 +1,3 @@
-// SnapSolve/client/bin/client.dart
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -51,14 +50,24 @@ Future<void> main(List<String> arguments) async {
       });
       break;
     case 'solve':
-      // 인자 개수 확인을 3개로 변경
-      if (args.length < 3) return print('사용법: solve <사용자이름> <문제ID> <제출할답>');
-      // 요청 본문에 username 추가
+      if (args.length < 3) return print('사용법: solve <사용자이름> <문제ID> <제출할 답>');
       await postToServer('/solve', {
         'username': args[0],
         'problem_id': args[1],
         'user_answer': args[2],
       });
+      break;
+    case 'update':
+      if (args.length < 2)
+        return print('사용법: update <문제ID> <수정할정답> [수정할문제텍스트]');
+      await putToServer('/problems/${args[0]}', {
+        'correct_answer': args[1],
+        if (args.length > 2) 'problem_text': args.sublist(2).join(' '),
+      });
+      break;
+    case 'delete':
+      if (args.length < 1) return print('사용법: delete <문제ID>');
+      await deleteFromServer('/problems/${args[0]}');
       break;
     default:
       print('알 수 없는 명령어입니다: $command');
@@ -133,6 +142,33 @@ void printProblems(Map<String, dynamic> problems) {
       }
     }
   });
+}
+
+Future<void> putToServer(String path, Map<String, dynamic> body) async {
+  final url = Uri.parse('$serverUrl$path');
+  final headers = {'Content-Type': 'application/json'};
+  print('\n[수정 요청] $path');
+  try {
+    final response = await http.put(
+      url,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    handleResponse(response);
+  } catch (e) {
+    print('서버 통신 오류: $e');
+  }
+}
+
+Future<void> deleteFromServer(String path) async {
+  final url = Uri.parse('$serverUrl$path');
+  print('\n[삭제 요청] $path');
+  try {
+    final response = await http.delete(url);
+    handleResponse(response);
+  } catch (e) {
+    print('서버 통신 오류: $e');
+  }
 }
 
 void printUsage() {
