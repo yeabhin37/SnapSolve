@@ -3,7 +3,7 @@ from typing import List, Optional
 
 class UserCreate(BaseModel):
     username: str
-    password: str 
+    password: str = "1234"
 
 class FolderCreate(BaseModel):
     username: str

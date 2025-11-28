@@ -83,7 +83,12 @@ def parse_clova_ocr_response(response_json: Dict) -> List[Dict]:
 def register_user(request: schemas.UserCreate, db: Session = Depends(get_db)):
     if get_user_by_name(db, request.username):
         raise HTTPException(status_code=400, detail="이미 존재하는 사용자입니다.")
-    new_user = models.User(username=request.username)
+    
+    # password가 오지 않아도 기본값이나 더미 값을 넣어줍니다.
+    new_user = models.User(
+        username=request.username, 
+        password_hash=request.password # 스키마 기본값 "1234"가 들어감
+    )
     db.add(new_user)
     db.commit()
     return {"message": f"'{request.username}'님 환영합니다!"}
