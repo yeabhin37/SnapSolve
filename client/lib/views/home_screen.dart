@@ -4,6 +4,7 @@ import '../viewmodels/user_view_model.dart';
 import '../viewmodels/folder_view_model.dart';
 import 'camera/ocr_preview_screen.dart'; // 다음 단계에서 주석 해제
 // import 'problem/problem_list_screen.dart'; // 다음 단계에서 주석 해제
+import 'problem/solve_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -62,9 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: const Text('문제 풀러 가기'),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
-                      // TODO: 문제 목록 화면으로 이동 (다음 단계)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('$folderName 폴더 선택됨')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SolveScreen(folderName: folderName),
+                        ),
                       );
                     },
                   ),

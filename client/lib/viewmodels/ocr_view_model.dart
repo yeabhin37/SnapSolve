@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
+//import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../services/api_service.dart';
 
 class OcrViewModel extends ChangeNotifier {
@@ -15,11 +15,16 @@ class OcrViewModel extends ChangeNotifier {
   Map<String, dynamic>? _ocrResult;
   Map<String, dynamic>? get ocrResult => _ocrResult;
 
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
   String? _tempId; // 저장할 때 필요한 ID
 
   // 1. 이미지 선택 및 압축 후 OCR 요청
   Future<void> pickAndScanImage(String username, ImageSource source) async {
     try {
+      _errorMessage = null;
+
       // 1-1. 이미지 선택
       final XFile? pickedFile = await _picker.pickImage(source: source);
       if (pickedFile == null) return;
