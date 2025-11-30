@@ -10,11 +10,15 @@ class HomeTab extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            const Icon(Icons.camera_front, color: Color(0xFF1E2B58)), // 로고 대용
-            const SizedBox(width: 8),
+            Image.asset('assets/images/logo_01.png', width: 60, height: 60),
+            const SizedBox(width: 2),
             const Text(
               "찍고풀고",
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+              style: TextStyle(
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w800,
+                fontSize: 24,
+              ),
             ),
           ],
         ),

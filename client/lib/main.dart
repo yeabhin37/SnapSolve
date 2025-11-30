@@ -28,6 +28,8 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
+          fontFamily: 'Pretendard',
+
           scaffoldBackgroundColor: Colors.white, // 전체 배경 흰색
           // 프로토타입 컬러 팔레트 적용
           colorScheme: const ColorScheme.light(

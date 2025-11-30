@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.camera_alt, size: 80, color: Color(0xFF1E3A8A)),
+              Image.asset('assets/images/logo_01.png', width: 120, height: 120),
               const SizedBox(height: 20),
               const Text(
                 '찍고풀고',
