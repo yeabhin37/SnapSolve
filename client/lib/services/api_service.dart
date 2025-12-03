@@ -24,7 +24,6 @@ class ApiService {
       // 200(성공)이면 로그인 성공으로 처리
       return response.statusCode == 200;
     } catch (e) {
-      print('회원가입 오류: $e');
       return false;
     }
   }
@@ -40,7 +39,6 @@ class ApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('로그인 오류: $e');
       return false;
     }
   }
@@ -85,7 +83,6 @@ class ApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('폴더 생성 오류: $e');
       return false;
     }
   }

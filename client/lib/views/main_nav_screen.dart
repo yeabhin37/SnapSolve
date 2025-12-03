@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import '../viewmodels/user_view_model.dart';
+import '../viewmodels/ocr_view_model.dart';
+import 'camera/ocr_preview_screen.dart';
 import 'home_tab.dart';
 import 'workbook_tab.dart';
 
@@ -16,23 +21,21 @@ class _MainNavScreenState extends State<MainNavScreen> {
   final List<Widget> _screens = [
     const HomeTab(), // 홈 (대시보드)
     const WorkbookTab(), // 문제집 (폴더 목록)
-    const Center(child: Text("스캔 화면은 버튼으로 동작합니다")), // 스캔 (자리만 차지)
+    const SizedBox.shrink(),
     const Center(child: Text("마이페이지 준비중")), // 마이페이지
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _selectedIndex == 2
-          ? _screens[0] // 스캔 버튼 눌러도 배경은 홈 유지 (실제 이동은 버튼 로직에서)
-          : IndexedStack(index: _selectedIndex, children: _screens),
+      body: IndexedStack(index: _selectedIndex, children: _screens),
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 2) {
-            // TODO: 스캔 화면으로 이동 (여기선 탭 이동 안함)
-            // HomeTab의 스캔 버튼과 동일한 로직 연결 필요
+            // 스캔 탭 클릭 -> 바텀 시트 호출
+            _showScanBottomSheet(context);
           } else {
             setState(() => _selectedIndex = index);
           }
@@ -51,6 +54,107 @@ class _MainNavScreenState extends State<MainNavScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: '마이페이지'),
         ],
       ),
+    );
+  }
+
+  void _showScanBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(25),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(25),
+              topRight: Radius.circular(25),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "문제집 스캔하기",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E2B58),
+                ),
+              ),
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E2B58),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _processScan(ImageSource.camera);
+                  },
+                  child: const Text(
+                    "카메라로 스캔",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEBEFF5),
+                    foregroundColor: Colors.black87,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _processScan(ImageSource.gallery);
+                  },
+                  child: const Text(
+                    "갤러리에서 선택",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _processScan(ImageSource source) {
+    // context가 유효한지 확인하고 접근
+    if (!mounted) return;
+
+    final userVM = context.read<UserViewModel>();
+    final ocrVM = context.read<OcrViewModel>();
+
+    ocrVM.pickAndScanImage(userVM.username, source);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),
     );
   }
 }

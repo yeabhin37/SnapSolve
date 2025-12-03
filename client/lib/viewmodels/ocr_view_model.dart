@@ -41,7 +41,6 @@ class OcrViewModel extends ChangeNotifier {
       _tempId = result['temp_id'];
       _ocrResult = result['preview']; // { "problem": "...", "choices": [...] }
     } catch (e) {
-      print('OCR Error: $e');
       _errorMessage = '이미지 분석 중 오류가 발생했습니다.';
       _ocrResult = null; // 실패 시 초기화
     } finally {
@@ -80,7 +79,6 @@ class OcrViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('Save Error: $e');
       return false;
     }
   }
