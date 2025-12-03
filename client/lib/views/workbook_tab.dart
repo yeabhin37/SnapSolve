@@ -52,7 +52,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: folderVM.folders.length,
                     itemBuilder: (context, index) {
-                      final folderName = folderVM.folders[index];
+                      final folder = folderVM.folders[index];
                       // 색상 랜덤하게 돌리기 (민트, 네이비, 그레이)
                       final iconColor = [
                         const Color(0xFF2EBA9F),
@@ -66,7 +66,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  SolveScreen(folderName: folderName),
+                                  SolveScreen(folderName: folder.name),
                             ),
                           );
                         },
@@ -96,14 +96,15 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    folderName,
+                                    folder.name,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
                                   ),
-                                  const Text(
-                                    "2025.10.09",
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "${folder.problemCount}문제",
                                     style: TextStyle(
                                       color: Colors.grey,
                                       fontSize: 12,

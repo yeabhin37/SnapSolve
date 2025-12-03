@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../models/folder_model.dart';
 
 class FolderViewModel extends ChangeNotifier {
   final ApiService _api = ApiService();
 
-  List<String> _folders = [];
-  List<String> get folders => _folders;
+  List<Folder> _folders = [];
+  List<Folder> get folders => _folders;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
