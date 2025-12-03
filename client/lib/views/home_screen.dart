@@ -131,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 final success = await folderVM.addFolder(
                   userVM.username,
                   controller.text,
+                  "0xFF1E2B58",
                 );
                 if (success && context.mounted) {
                   Navigator.pop(context);

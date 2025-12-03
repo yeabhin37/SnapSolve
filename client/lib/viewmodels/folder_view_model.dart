@@ -23,13 +23,34 @@ class FolderViewModel extends ChangeNotifier {
   }
 
   // 폴더 추가하기
-  Future<bool> addFolder(String username, String folderName) async {
+  Future<bool> addFolder(
+    String username,
+    String folderName,
+    String color,
+  ) async {
     if (folderName.isEmpty) return false;
 
-    final success = await _api.createFolder(username, folderName);
+    final success = await _api.createFolder(username, folderName, color);
     if (success) {
       await loadFolders(username); // 성공하면 목록 새로고침
     }
+    return success;
+  }
+
+  Future<bool> editFolder(
+    String username,
+    int folderId,
+    String name,
+    String color,
+  ) async {
+    final success = await _api.updateFolder(username, folderId, name, color);
+    if (success) await loadFolders(username);
+    return success;
+  }
+
+  Future<bool> removeFolder(String username, int folderId) async {
+    final success = await _api.deleteFolder(username, folderId);
+    if (success) await loadFolders(username);
     return success;
   }
 }

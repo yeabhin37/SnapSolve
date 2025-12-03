@@ -12,6 +12,17 @@ class UserLogin(BaseModel):
 class FolderCreate(BaseModel):
     username: str
     folder_name: str
+    color: str = "0xFF1E2B58"
+
+class FolderUpdate(BaseModel):
+    username: str
+    folder_id: int
+    new_name: str
+    new_color: str
+
+class FolderDelete(BaseModel):
+    username: str
+    folder_id: int
 
 class FolderResponse(BaseModel):
     id: int

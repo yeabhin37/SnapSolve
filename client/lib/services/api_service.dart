@@ -67,17 +67,66 @@ class ApiService {
   }
 
   // 3. 폴더 생성
-  Future<bool> createFolder(String username, String folderName) async {
+  Future<bool> createFolder(
+    String username,
+    String folderName,
+    String colorCode,
+  ) async {
     final url = Uri.parse('${Constants.baseUrl}/create-folder');
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'folder_name': folderName}),
+        body: jsonEncode({
+          'username': username,
+          'folder_name': folderName,
+          'color': colorCode,
+        }),
       );
       return response.statusCode == 200;
     } catch (e) {
       print('폴더 생성 오류: $e');
+      return false;
+    }
+  }
+
+  Future<bool> updateFolder(
+    String username,
+    int folderId,
+    String newName,
+    String newColor,
+  ) async {
+    final url = Uri.parse('${Constants.baseUrl}/update-folder');
+    try {
+      final response = await http.put(
+        // PUT 메소드
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'folder_id': folderId,
+          'new_name': newName,
+          'new_color': newColor,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteFolder(String username, int folderId) async {
+    final url = Uri.parse('${Constants.baseUrl}/delete-folder');
+    try {
+      // delete 메소드는 body를 잘 안 쓰지만, 여기선 post처럼 보내거나 request 패키지의 send 사용
+      // 편의상 post 방식과 동일하게 body를 담을 수 있는 client request 사용
+      final request = http.Request('DELETE', url);
+      request.headers.addAll({'Content-Type': 'application/json'});
+      request.body = jsonEncode({'username': username, 'folder_id': folderId});
+
+      final response = await request.send();
+      return response.statusCode == 200;
+    } catch (e) {
       return false;
     }
   }

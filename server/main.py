@@ -14,7 +14,7 @@ from database import engine, Base, get_db
 import models, schemas 
 from passlib.context import CryptContext
 
-# models.Base.metadata.drop_all(bind=engine)   # 기존 테이블 삭제
+models.Base.metadata.drop_all(bind=engine)   # 기존 테이블 삭제
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -121,7 +121,11 @@ def create_folder(request: schemas.FolderCreate, db: Session = Depends(get_db)):
     if get_folder_by_name(db, user.id, request.folder_name):
         raise HTTPException(status_code=400, detail="이미 존재하는 폴더입니다.")
         
-    new_folder = models.Folder(name=request.folder_name, user_id=user.id)
+    new_folder = models.Folder(
+        name=request.folder_name, 
+        user_id=user.id,
+        color=request.color
+    )
     db.add(new_folder)
     db.commit()
     return {"message": f"'{request.folder_name}' 폴더 생성 완료"}
@@ -186,11 +190,33 @@ def get_folders(request: schemas.UserCreate, db: Session = Depends(get_db)):
     if not user: raise HTTPException(status_code=404, detail="사용자 없음")
     return {"folders": [
         {
+            "id": f.id,
             "name": f.name, 
+            "color": f.color, 
             "problem_count": len(f.problems)
         }
         for f in user.folders
     ]}
+
+@app.put("/update-folder")
+def update_folder(request: schemas.FolderUpdate, db: Session = Depends(get_db)):
+    # 본인 폴더인지 확인 로직 필요하지만 생략 (MVP)
+    folder = db.query(models.Folder).filter(models.Folder.id == request.folder_id).first()
+    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
+    
+    folder.name = request.new_name
+    folder.color = request.new_color
+    db.commit()
+    return {"message": "수정 완료"}
+
+@app.delete("/delete-folder")
+def delete_folder(request: schemas.FolderDelete, db: Session = Depends(get_db)):
+    folder = db.query(models.Folder).filter(models.Folder.id == request.folder_id).first()
+    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
+    
+    db.delete(folder)
+    db.commit()
+    return {"message": "삭제 완료"}
 
 @app.post("/problems")
 def get_problems(request: schemas.FolderCreate, db: Session = Depends(get_db)):
