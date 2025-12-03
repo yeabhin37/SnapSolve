@@ -124,14 +124,99 @@ class _WorkbookTabState extends State<WorkbookTab> {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1E2B58),
-        child: const Icon(Icons.add, color: Colors.white),
+        shape: const CircleBorder(),
+        child: const Icon(Icons.create_new_folder, color: Colors.white),
         onPressed: () => _showAddFolderDialog(context),
       ),
     );
   }
 
   void _showAddFolderDialog(BuildContext context) {
-    // 기존과 동일한 로직 (생략하거나 4단계 답변의 코드 복사)
-    // ...
+    final TextEditingController controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white, // 배경 흰색
+        surfaceTintColor: Colors.white, // 머티리얼3 틴트 제거
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          '새 폴더 만들기',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Color(0xFF1E2B58), // 네이비
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min, // 내용물 크기만큼만 차지
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "학습할 과목이나 시험 이름을 입력하세요.",
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              autofocus: true, // 팝업 뜨자마자 키보드 올라오게
+              decoration: const InputDecoration(
+                hintText: '예: 수학, 영어, 정보처리기사',
+                hintStyle: TextStyle(color: Colors.black26),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                focusedBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xFF1E2B58), width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final folderName = controller.text.trim();
+
+              if (folderName.isNotEmpty) {
+                // ViewModel 접근
+                final userVM = context.read<UserViewModel>();
+                final folderVM = context.read<FolderViewModel>();
+
+                // 폴더 생성 요청
+                final success = await folderVM.addFolder(
+                  userVM.username,
+                  folderName,
+                );
+
+                if (success && context.mounted) {
+                  Navigator.pop(context); // 팝업 닫기
+
+                  // 성공 메시지 (선택사항)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("'$folderName' 폴더가 생성되었습니다."),
+                      backgroundColor: const Color(0xFF1E2B58),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              '생성',
+              style: TextStyle(
+                color: Color(0xFF1E2B58),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

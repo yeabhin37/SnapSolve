@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/user_view_model.dart';
 import '../../viewmodels/solve_view_model.dart';
+import '../../viewmodels/ocr_view_model.dart';
 import '../../models/problem_model.dart';
+import '../camera/ocr_preview_screen.dart';
 
 class SolveScreen extends StatefulWidget {
   final String folderName;
@@ -40,6 +43,7 @@ class _SolveScreenState extends State<SolveScreen> {
   Widget build(BuildContext context) {
     final solveVM = context.watch<SolveViewModel>();
     final totalProblems = solveVM.problems.length;
+    final isEmpty = !solveVM.isLoading && solveVM.problems.isEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -53,8 +57,8 @@ class _SolveScreenState extends State<SolveScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: Color(0xFF1E2B58)),
             )
-          : solveVM.problems.isEmpty
-          ? const Center(child: Text("이 폴더에는 문제가 없습니다."))
+          : isEmpty
+          ? _buildEmptyView()
           : _isFinished
           ? _buildScoreView(solveVM.problems) // 결과 화면
           : Column(
@@ -109,13 +113,168 @@ class _SolveScreenState extends State<SolveScreen> {
             ),
 
       // 3. 하단 버튼 (정답 확인 / 다음 문제) - 결과 화면일 때는 숨김
-      bottomNavigationBar: _isFinished ? null : _buildBottomButton(solveVM),
+      bottomNavigationBar: (_isFinished || solveVM.isLoading || isEmpty)
+          ? null
+          : _buildBottomButton(solveVM),
+
+      // 4. 빈 화면일 때만 카메라 플로팅 버튼 표시 (디자인 우측 하단 버튼)
+      floatingActionButton: isEmpty
+          ? FloatingActionButton(
+              backgroundColor: const Color(0xFF1E2B58),
+              shape: const CircleBorder(),
+              child: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+              onPressed: () => _showScanBottomSheet(context),
+            )
+          : null,
     );
   }
 
-  // ------------------------------------------------------------------------
-  // UI 1: 개별 문제 페이지
-  // ------------------------------------------------------------------------
+  void _showScanBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent, // 뒤에 둥근 모서리 보이게 투명 처리
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(25),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(25),
+              topRight: Radius.circular(25),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // 내용물 크기만큼만 높이 차지
+            children: [
+              // 상단 핸들 (회색 바)
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 타이틀
+              const Text(
+                "문제집 스캔하기",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E2B58),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // 1. 카메라로 스캔 버튼
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E2B58), // 네이비
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // 시트 닫기
+                    _processScan(ImageSource.camera); // 촬영 시작
+                  },
+                  child: const Text(
+                    "카메라로 스캔",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              // 2. 갤러리에서 선택 버튼
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEBEFF5), // 연한 회색/보라
+                    foregroundColor: Colors.black87, // 글자색 검정
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // 시트 닫기
+                    _processScan(ImageSource.gallery); // 갤러리 열기
+                  },
+                  child: const Text(
+                    "갤러리에서 선택",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _processScan(ImageSource source) {
+    final userVM = context.read<UserViewModel>();
+    final ocrVM = context.read<OcrViewModel>();
+
+    // 1. 이미지 피킹 및 OCR 요청 시작
+    ocrVM.pickAndScanImage(userVM.username, source);
+
+    // 2. 결과 확인 화면으로 이동 (로딩 상태를 보여줌)
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),
+    );
+  }
+
+  Widget _buildEmptyView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF3F5F9),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.find_in_page_outlined,
+              size: 50,
+              color: Color(0xFF1E2B58),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "저장된 문제가 없습니다",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E2B58),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            "새로운 문제를 스캔하여 나만의 학습지를 만들어보세요.",
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProblemPage(Problem problem) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -278,9 +437,6 @@ class _SolveScreenState extends State<SolveScreen> {
     );
   }
 
-  // ------------------------------------------------------------------------
-  // UI 2: 하단 버튼 (정답 확인 / 다음 문제)
-  // ------------------------------------------------------------------------
   Widget _buildBottomButton(SolveViewModel solveVM) {
     final currentProblem = solveVM.problems[_currentProblemIndex];
     final isLastPage = _currentProblemIndex == solveVM.problems.length - 1;
@@ -375,9 +531,6 @@ class _SolveScreenState extends State<SolveScreen> {
     );
   }
 
-  // ------------------------------------------------------------------------
-  // UI 3: 최종 결과 화면 (Score View) - 프로토타입 7번째 장
-  // ------------------------------------------------------------------------
   Widget _buildScoreView(List<Problem> problems) {
     int correctCount = 0;
     _results.forEach((_, isCorrect) {

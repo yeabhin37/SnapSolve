@@ -3,8 +3,12 @@ from typing import List, Optional
 
 class UserCreate(BaseModel):
     username: str
-    password: str = "1234"
+    password: str
 
+class UserLogin(BaseModel):
+    username: str
+    password: str
+    
 class FolderCreate(BaseModel):
     username: str
     folder_name: str
@@ -28,6 +32,7 @@ class SaveRequest(BaseModel):
     temp_id: str
     folder_name: str
     correct_answer: str
+    problem_text: Optional[str] = None
 
 class SolveRequest(BaseModel):
     username: str

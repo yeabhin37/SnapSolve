@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
 import '../models/problem_model.dart';
+import '../models/folder_model.dart';
 
 class ApiService {
   // 싱글톤 패턴 (어디서든 ApiService()로 불러다 쓰기 위함)
@@ -10,37 +11,54 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  // 1. 회원가입 (로그인 대용)
-  Future<bool> register(String username) async {
+  // 1-1. 회원가입
+  Future<bool> register(String username, String password) async {
     final url = Uri.parse('${Constants.baseUrl}/register');
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         // 백엔드 스키마에 맞춰 password 필드 추가 (더미 값)
-        body: jsonEncode({'username': username, 'password': '123'}),
+        body: jsonEncode({'username': username, 'password': password}),
       );
-      // 200(성공)이거나 400(이미 존재함)이면 로그인 성공으로 처리
-      return response.statusCode == 200 || response.statusCode == 400;
+      // 200(성공)이면 로그인 성공으로 처리
+      return response.statusCode == 200;
     } catch (e) {
-      print('서버 연결 오류: $e');
+      print('회원가입 오류: $e');
+      return false;
+    }
+  }
+
+  // 1-2. 로그인
+  Future<bool> login(String username, String password) async {
+    final url = Uri.parse('${Constants.baseUrl}/login');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'password': password}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('로그인 오류: $e');
       return false;
     }
   }
 
   // 2. 폴더 목록 가져오기
-  Future<List<String>> getFolders(String username) async {
+  Future<List<Folder>> getFolders(String username) async {
     final url = Uri.parse('${Constants.baseUrl}/folders');
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': '123'}),
+        body: jsonEncode({'username': username}),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return List<String>.from(data['folders']);
+        final list = data['folders'] as List;
+        return list.map((e) => Folder.fromJson(e)).toList();
       }
     } catch (e) {
       print('폴더 조회 오류: $e');
@@ -92,6 +110,7 @@ class ApiService {
     String tempId,
     String folderName,
     String answer,
+    String? editedProblemText,
   ) async {
     final url = Uri.parse('${Constants.baseUrl}/save');
     final response = await http.post(
@@ -102,6 +121,7 @@ class ApiService {
         'temp_id': tempId,
         'folder_name': folderName,
         'correct_answer': answer,
+        'problem_text': editedProblemText,
       }),
     );
 

@@ -17,8 +17,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   // 입력 폼 컨트롤러
   final TextEditingController _problemController = TextEditingController();
   final TextEditingController _answerController = TextEditingController();
-  final TextEditingController _memoController =
-      TextEditingController(); // 메모 기능 추가 (UI 반영)
+  final TextEditingController _memoController = TextEditingController();
 
   String? _selectedFolder; // 저장할 폴더
 
@@ -199,7 +198,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     }
     // 폴더 자동 선택
     if (_selectedFolder == null && folderVM.folders.isNotEmpty) {
-      _selectedFolder = folderVM.folders[0];
+      _selectedFolder = folderVM.folders[0].name;
     }
 
     return Scaffold(
@@ -317,8 +316,8 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                         isExpanded: true,
                         items: folderVM.folders.map((folder) {
                           return DropdownMenuItem(
-                            value: folder,
-                            child: Text(folder),
+                            value: folder.name,
+                            child: Text(folder.name),
                           );
                         }).toList(),
                         onChanged: (val) {

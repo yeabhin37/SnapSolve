@@ -11,7 +11,8 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _idController = TextEditingController();
+  final TextEditingController _pwController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     return Scaffold(
       body: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(30.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -30,56 +31,110 @@ class _SplashScreenState extends State<SplashScreen> {
                 '찍고풀고',
                 style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
-              const Text('나만의 맞춤형 디지털 학습지'),
-              const SizedBox(height: 50),
+              const Text(
+                '나만의 맞춤형 디지털 학습지',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
 
+              // 아이디 입력
               TextField(
-                controller: _controller,
+                controller: _idController,
                 decoration: const InputDecoration(
-                  labelText: '닉네임 입력',
+                  labelText: '아이디',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: userViewModel.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ElevatedButton(
+              // 비밀번호 입력
+              TextField(
+                controller: _pwController,
+                obscureText: true, // 비밀번호 가리기
+                decoration: const InputDecoration(
+                  labelText: '비밀번호',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock),
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              // 버튼 영역
+              if (userViewModel.isLoading)
+                const CircularProgressIndicator()
+              else
+                Column(
+                  children: [
+                    // 로그인 버튼
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E3A8A),
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () async {
-                          final name = _controller.text.trim();
-                          if (name.isNotEmpty) {
-                            final success = await userViewModel.login(name);
-                            if (success && context.mounted) {
-                              // 로그인 성공 시 홈 화면으로 이동 (뒤로가기 불가)
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const MainNavScreen(),
-                                ),
-                              );
-                            } else if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('로그인 실패: 서버를 확인해주세요'),
-                                ),
-                              );
-                            }
+                          final id = _idController.text.trim();
+                          final pw = _pwController.text.trim();
+
+                          if (id.isEmpty || pw.isEmpty) return;
+
+                          final success = await userViewModel.login(id, pw);
+                          if (success && context.mounted) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MainNavScreen(),
+                              ),
+                            );
+                          } else if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('로그인 실패: 아이디/비번을 확인하세요'),
+                              ),
+                            );
                           }
                         },
                         child: const Text(
-                          '시작하기',
+                          '로그인',
                           style: TextStyle(fontSize: 18),
                         ),
                       ),
-              ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 회원가입 버튼 (텍스트 버튼)
+                    TextButton(
+                      onPressed: () async {
+                        final id = _idController.text.trim();
+                        final pw = _pwController.text.trim();
+
+                        if (id.isEmpty || pw.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('아이디와 비밀번호를 입력해주세요')),
+                          );
+                          return;
+                        }
+
+                        final success = await userViewModel.register(id, pw);
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('가입 성공! 로그인 해주세요.')),
+                          );
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('가입 실패: 이미 존재하는 아이디입니다.'),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('회원가입 하기'),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),

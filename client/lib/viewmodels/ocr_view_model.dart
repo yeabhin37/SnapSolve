@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-//import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../services/api_service.dart';
 
 class OcrViewModel extends ChangeNotifier {
@@ -43,6 +42,7 @@ class OcrViewModel extends ChangeNotifier {
       _ocrResult = result['preview']; // { "problem": "...", "choices": [...] }
     } catch (e) {
       print('OCR Error: $e');
+      _errorMessage = '이미지 분석 중 오류가 발생했습니다.';
       _ocrResult = null; // 실패 시 초기화
     } finally {
       _isUploading = false;
@@ -66,7 +66,13 @@ class OcrViewModel extends ChangeNotifier {
     // *일단 지금은 서버 스펙인 save(temp_id, correct_answer)만 호출합니다.*
 
     try {
-      await _api.saveProblem(username, _tempId!, folderName, answer);
+      await _api.saveProblem(
+        username,
+        _tempId!,
+        folderName,
+        answer,
+        editedProblem,
+      );
 
       // 저장 후 초기화
       _ocrResult = null;

@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-    <string>문제집 촬영을 위해 카메라 권한이 필요합니다.</string>
+    <string>문제집 촬영을 위해 카메라 접근 권한이 필요합니다.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>저장된 이미지를 불러오기 위해 갤러리 접근 권한이 필요합니다.</string>
+    <string>갤러리의 이미지를 불러오기 위해 갤러리 접근 권한이 필요합니다.</string>
 	
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

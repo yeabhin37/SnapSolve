@@ -12,10 +12,14 @@ from sqlalchemy.orm import Session
 from typing import List, Dict
 from database import engine, Base, get_db
 import models, schemas 
+from passlib.context import CryptContext
 
+# models.Base.metadata.drop_all(bind=engine)   # 기존 테이블 삭제
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 temp_ocr_results = {} # OCR 미리보기 결과를 임시 저장하는 곳
 
@@ -84,14 +88,29 @@ def register_user(request: schemas.UserCreate, db: Session = Depends(get_db)):
     if get_user_by_name(db, request.username):
         raise HTTPException(status_code=400, detail="이미 존재하는 사용자입니다.")
     
+    # 비밀번호 해싱 
+    hashed_password = pwd_context.hash(request.password)
+
     # password가 오지 않아도 기본값이나 더미 값을 넣어줍니다.
     new_user = models.User(
         username=request.username, 
-        password_hash=request.password # 스키마 기본값 "1234"가 들어감
+        password_hash=hashed_password # 스키마 기본값 "1234"가 들어감
     )
     db.add(new_user)
     db.commit()
     return {"message": f"'{request.username}'님 환영합니다!"}
+
+@app.post("/login")
+def login_user(request: schemas.UserLogin, db: Session = Depends(get_db)):
+    user = get_user_by_name(db, request.username)
+    if not user:
+        raise HTTPException(status_code=400, detail="사용자를 찾을 수 없습니다.")
+    
+    # 비밀번호 검증
+    if not pwd_context.verify(request.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
+        
+    return {"message": "로그인 성공", "username": user.username}
 
 @app.post("/create-folder")
 def create_folder(request: schemas.FolderCreate, db: Session = Depends(get_db)):
@@ -147,8 +166,11 @@ def save_problem(request: schemas.SaveRequest, db: Session = Depends(get_db)):
     if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
     
     ocr_data = temp_ocr_results.pop(request.temp_id)
+    
+    final_problem_text = request.problem_text if request.problem_text else ocr_data['problem']
+
     new_problem = models.Problem(
-        problem_text=ocr_data['problem'],
+        problem_text=final_problem_text,
         choices=ocr_data['choices'],
         correct_answer=request.correct_answer,
         folder_id=folder.id
@@ -162,7 +184,13 @@ def save_problem(request: schemas.SaveRequest, db: Session = Depends(get_db)):
 def get_folders(request: schemas.UserCreate, db: Session = Depends(get_db)):
     user = get_user_by_name(db, request.username)
     if not user: raise HTTPException(status_code=404, detail="사용자 없음")
-    return {"folders": [f.name for f in user.folders]}
+    return {"folders": [
+        {
+            "name": f.name, 
+            "problem_count": len(f.problems)
+        }
+        for f in user.folders
+    ]}
 
 @app.post("/problems")
 def get_problems(request: schemas.FolderCreate, db: Session = Depends(get_db)):

@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               itemCount: folderVM.folders.length,
               itemBuilder: (context, index) {
-                final folderName = folderVM.folders[index];
+                final folder = folderVM.folders[index];
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
@@ -57,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       size: 40,
                     ),
                     title: Text(
-                      folderName,
+                      folder.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: const Text('문제 풀러 가기'),
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => SolveScreen(folderName: folderName),
+                          builder: (_) => SolveScreen(folderName: folder.name),
                         ),
                       );
                     },
