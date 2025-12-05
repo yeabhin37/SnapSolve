@@ -312,67 +312,67 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildFolderStatsCard(FolderViewModel vm) {
-    return Container(
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "폴더별 문제 수",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          if (vm.folders.isEmpty)
-            const Center(
-              child: Text(
-                "생성된 폴더가 없습니다.",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ...vm.folders.map((folder) {
-            double percent = (folder.problemCount / 50).clamp(0.0, 1.0);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 15),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 80,
-                    child: Text(
-                      folder.name,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(5),
-                      child: LinearProgressIndicator(
-                        value: percent,
-                        minHeight: 10,
-                        backgroundColor: const Color(0xFFF0F0F0),
-                        color: const Color(0xFF1E2B58),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    "${folder.problemCount}개",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
+  // Widget _buildFolderStatsCard(FolderViewModel vm) {
+  //   return Container(
+  //     padding: const EdgeInsets.all(25),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(20),
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         const Text(
+  //           "폴더별 문제 수",
+  //           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //         ),
+  //         const SizedBox(height: 20),
+  //         if (vm.folders.isEmpty)
+  //           const Center(
+  //             child: Text(
+  //               "생성된 폴더가 없습니다.",
+  //               style: TextStyle(color: Colors.grey),
+  //             ),
+  //           ),
+  //         ...vm.folders.map((folder) {
+  //           double percent = (folder.problemCount / 50).clamp(0.0, 1.0);
+  //           return Padding(
+  //             padding: const EdgeInsets.only(bottom: 15),
+  //             child: Row(
+  //               children: [
+  //                 SizedBox(
+  //                   width: 80,
+  //                   child: Text(
+  //                     folder.name,
+  //                     style: const TextStyle(
+  //                       color: Colors.grey,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                     overflow: TextOverflow.ellipsis,
+  //                   ),
+  //                 ),
+  //                 Expanded(
+  //                   child: ClipRRect(
+  //                     borderRadius: BorderRadius.circular(5),
+  //                     child: LinearProgressIndicator(
+  //                       value: percent,
+  //                       minHeight: 10,
+  //                       backgroundColor: const Color(0xFFF0F0F0),
+  //                       color: const Color(0xFF1E2B58),
+  //                     ),
+  //                   ),
+  //                 ),
+  //                 const SizedBox(width: 10),
+  //                 Text(
+  //                   "${folder.problemCount}개",
+  //                   style: const TextStyle(fontWeight: FontWeight.bold),
+  //                 ),
+  //               ],
+  //             ),
+  //           );
+  //         }),
+  //       ],
+  //     ),
+  //   );
+  // }
 }
