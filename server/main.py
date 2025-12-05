@@ -279,8 +279,7 @@ def check_answer(problem_id: str, request: schemas.SolveRequest, db: Session = D
 
 
 # ------ Wrong Notes ------
-
-# 10. 오답노트 조회 (GET)
+# 오답노트 조회 (GET)
 @app.get("/wrong-notes")
 def get_wrong_notes(username: str = Query(...), db: Session = Depends(get_db)):
     user = get_user_by_name(db, username)
@@ -306,3 +305,35 @@ def bulk_update_wrong_note(request: schemas.WrongNoteUpdate, db: Session = Depen
         update({models.Problem.is_wrong_note: request.is_wrong_note}, synchronize_session=False)
     db.commit()
     return {"message": "업데이트 완료"}
+
+# ------ History ------
+# 시험 점수 기록 API
+@app.post("/history")
+def create_history(request: schemas.HistoryCreate, db: Session = Depends(get_db)):
+    user = get_user_by_name(db, request.username)
+    if not user: raise HTTPException(status_code=404)
+    
+    new_history = models.ExamHistory(user_id=user.id, score=request.score)
+    db.add(new_history)
+    db.commit()
+    return {"message": "기록됨"}
+
+# 내 점수 기록 가져오기 (최근 7개 등)
+@app.get("/history")
+def get_histories(username: str = Query(...), db: Session = Depends(get_db)):
+    user = get_user_by_name(db, username)
+    
+    # 날짜순 정렬 후 최근 10개만
+    histories = db.query(models.ExamHistory)\
+        .filter(models.ExamHistory.user_id == user.id)\
+        .order_by(models.ExamHistory.solved_date.asc())\
+        .limit(10).all()
+        
+    return {
+        "data": [
+            {
+                "date": h.solved_date.strftime("%m/%d"), # "10/25" 형식
+                "score": h.score
+            } for h in histories
+        ]
+    }

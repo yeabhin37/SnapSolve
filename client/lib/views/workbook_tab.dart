@@ -98,7 +98,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                   width: 50,
                                   height: 50,
                                   decoration: BoxDecoration(
-                                    color: Color(0xFF009688),
+                                    color: Color(0xFFE65A5A),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Icon(

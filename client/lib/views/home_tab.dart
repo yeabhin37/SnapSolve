@@ -4,6 +4,7 @@ import '../viewmodels/user_view_model.dart';
 import '../viewmodels/folder_view_model.dart';
 import 'camera/ocr_preview_screen.dart';
 import 'problem/solve_screen.dart';
+import 'statistics_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -169,12 +170,26 @@ class _HomeTabState extends State<HomeTab> {
               ),
             ),
             const SizedBox(height: 10),
-            _buildShortcutCard(
-              "학습 통계",
-              "나의 학습 현황을 확인하세요",
-              Icons.bar_chart,
-              const Color(0xFF1E2B58),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                );
+              },
+              child: _buildShortcutCard(
+                "학습 통계",
+                "나의 학습 현황을 확인하세요",
+                Icons.bar_chart,
+                const Color(0xFF1E2B58),
+              ),
             ),
+            // _buildShortcutCard(
+            //   "학습 통계",
+            //   "나의 학습 현황을 확인하세요",
+            //   Icons.bar_chart,
+            //   const Color(0xFF1E2B58),
+            // ),
           ],
         ),
       ),

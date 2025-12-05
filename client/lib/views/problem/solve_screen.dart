@@ -650,6 +650,10 @@ class _SolveScreenState extends State<SolveScreen> {
       }
     }
 
+    final score = problems.isEmpty
+        ? 0
+        : (correctCount / problems.length * 100).toInt();
+
     // 결과 화면이 처음 뜰 때만 서버로 통계 전송 (한 번만 실행)
     if (!_isStatsUpdated) {
       _isStatsUpdated = true; // 플래그 잠금
@@ -657,14 +661,14 @@ class _SolveScreenState extends State<SolveScreen> {
       // 화면 그리기 끝난 직후 비동기로 실행
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final username = context.read<UserViewModel>().username;
-        // API 호출 (전체 문제 수, 맞힌 문제 수)
+        // API 호출
+        // 통계 업데이트
+        print("📊 통계 전송 시작: $score점"); // 디버깅 용도
         ApiService().updateUserStats(username, problems.length, correctCount);
+        // 점수 히스토리 저장
+        ApiService().saveExamScore(username, score);
       });
     }
-
-    final score = problems.isEmpty
-        ? 0
-        : (correctCount / problems.length * 100).toInt();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),

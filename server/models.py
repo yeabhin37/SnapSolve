@@ -18,8 +18,9 @@ class User(Base):
     # [추가] 통계용 컬럼 (기본값 0)
     total_solved = Column(Integer, default=0)  # 총 푼 횟수
     total_correct = Column(Integer, default=0) # 총 맞힌 횟수
-    
+
     folders = relationship("Folder", back_populates="owner")
+    histories = relationship("ExamHistory", back_populates="owner")
 
 class Folder(Base):
     __tablename__ = "folders"
@@ -45,3 +46,13 @@ class Problem(Base):
     memo = Column(Text, nullable=True)
     
     folder = relationship("Folder", back_populates="problems")
+
+class ExamHistory(Base):
+    __tablename__ = "exam_histories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    score = Column(Integer, nullable=False) # 점수 (0~100)
+    solved_date = Column(DateTime(timezone=True), server_default=func.now()) # 시험 본 날짜
+
+    owner = relationship("User", back_populates="histories")

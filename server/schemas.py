@@ -57,3 +57,12 @@ class WrongNoteUpdate(BaseModel):
 class OcrRequest(BaseModel):
     username: str
     image_data: str
+
+# ------ History ------
+class HistoryCreate(BaseModel):
+    username: str
+    score: int
+
+class HistoryResponse(BaseModel):
+    date: str  # "2023-10-25"
+    score: int

@@ -270,4 +270,50 @@ class ApiService {
       return false;
     }
   }
+
+  // 점수 기록 저장 (POST)
+  // Future<void> saveExamScore(String username, int score) async {
+  //   final url = Uri.parse('${Constants.baseUrl}/history');
+  //   try {
+  //     await http.post(
+  //       url,
+  //       headers: {'Content-Type': 'application/json'},
+  //       body: jsonEncode({'username': username, 'score': score}),
+  //     );
+  //   } catch (e) {
+  //     print('점수 저장 실패: $e');
+  //   }
+  // }
+  Future<void> saveExamScore(String username, int score) async {
+    print("👉 점수 저장 시도: $username, $score점");
+    final url = Uri.parse('${Constants.baseUrl}/history');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username, 'score': score}),
+      );
+      print("👉 서버 응답 코드: ${response.statusCode}");
+      print("👉 서버 응답 내용: ${utf8.decode(response.bodyBytes)}");
+    } catch (e) {
+      print('점수 저장 실패: $e');
+    }
+  }
+
+  // 점수 기록 가져오기 (GET)
+  Future<List<Map<String, dynamic>>> getExamHistory(String username) async {
+    final url = Uri.parse('${Constants.baseUrl}/history?username=$username');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        // 서버 응답: { "data": [ {"date": "...", "score": ...}, ... ] }
+        final list = List<Map<String, dynamic>>.from(data['data']);
+        return list;
+      }
+    } catch (e) {
+      print('히스토리 조회 실패: $e');
+    }
+    return [];
+  }
 }
