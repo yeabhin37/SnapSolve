@@ -24,8 +24,8 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
 
   // 데이터가 초기화되었는지 확인하는 플래그
   bool _isDataLoaded = false;
-
   String? _selectedFolder; // 저장할 폴더
+  int? _selectedFolderId;
 
   @override
   void initState() {
@@ -220,8 +220,8 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     }
 
     // 폴더 자동 선택
-    if (_selectedFolder == null && folderVM.folders.isNotEmpty) {
-      _selectedFolder = folderVM.folders[0].name;
+    if (_selectedFolderId == null && folderVM.folders.isNotEmpty) {
+      _selectedFolderId = folderVM.folders[0].id;
     }
 
     return Scaffold(
@@ -366,7 +366,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   const SizedBox(height: 8),
                   _buildGrayInputContainer(
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<int>(
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(horizontal: 10),
@@ -374,16 +374,16 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                           // floatingLabelBehavior: FloatingLabelBehavior.always,
                           // contentPadding: EdgeInsets.zero,
                         ),
-                        value: _selectedFolder,
+                        value: _selectedFolderId,
                         isExpanded: true,
                         items: folderVM.folders.map((folder) {
                           return DropdownMenuItem(
-                            value: folder.name,
+                            value: folder.id,
                             child: Text(folder.name),
                           );
                         }).toList(),
                         onChanged: (val) {
-                          setState(() => _selectedFolder = val);
+                          setState(() => _selectedFolderId = val);
                         },
                       ),
                     ),
@@ -474,7 +474,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                         ),
                       ),
                       onPressed: () async {
-                        if (_selectedFolder == null) {
+                        if (_selectedFolderId == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("폴더를 선택해주세요")),
                           );
@@ -495,7 +495,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                         // 저장 요청
                         final success = await ocrVM.saveProblem(
                           userVM.username,
-                          _selectedFolder!,
+                          _selectedFolderId!,
                           _answerController.text,
                           _problemController.text, // 수정된 문제 텍스트
                           finalChoices, // 수정된 선지 리스트 (참고: API가 지원해야 저장됨)

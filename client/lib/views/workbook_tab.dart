@@ -138,8 +138,10 @@ class _WorkbookTabState extends State<WorkbookTab> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  SolveScreen(folderName: folder.name),
+                              builder: (_) => SolveScreen(
+                                folderName: folder.name,
+                                folderId: folder.id,
+                              ),
                             ),
                           );
                         },

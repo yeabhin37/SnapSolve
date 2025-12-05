@@ -22,7 +22,7 @@ class ApiService {
         body: jsonEncode({'username': username, 'password': password}),
       );
       // 200(성공)이면 로그인 성공으로 처리
-      return response.statusCode == 200;
+      return response.statusCode == 201; // created
     } catch (e) {
       return false;
     }
@@ -43,15 +43,11 @@ class ApiService {
     }
   }
 
-  // 2. 폴더 목록 가져오기
+  // 2. 폴더 목록 조회
   Future<List<Folder>> getFolders(String username) async {
-    final url = Uri.parse('${Constants.baseUrl}/folders');
+    final url = Uri.parse('${Constants.baseUrl}/folders?username=$username');
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username}),
-      );
+      final response = await http.get(url); // GET 방식
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -70,7 +66,7 @@ class ApiService {
     String folderName,
     String colorCode,
   ) async {
-    final url = Uri.parse('${Constants.baseUrl}/create-folder');
+    final url = Uri.parse('${Constants.baseUrl}/folders');
     try {
       final response = await http.post(
         url,
@@ -81,27 +77,26 @@ class ApiService {
           'color': colorCode,
         }),
       );
-      return response.statusCode == 200;
+      return response.statusCode == 201;
     } catch (e) {
       return false;
     }
   }
 
+  // 4. 폴더 수정
   Future<bool> updateFolder(
     String username,
     int folderId,
     String newName,
     String newColor,
   ) async {
-    final url = Uri.parse('${Constants.baseUrl}/update-folder');
+    final url = Uri.parse('${Constants.baseUrl}/folders/$folderId');
     try {
       final response = await http.put(
-        // PUT 메소드
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'username': username,
-          'folder_id': folderId,
+          'username': username, // 권한 확인용
           'new_name': newName,
           'new_color': newColor,
         }),
@@ -112,28 +107,24 @@ class ApiService {
     }
   }
 
+  // 5. 폴더 삭제
   Future<bool> deleteFolder(String username, int folderId) async {
-    final url = Uri.parse('${Constants.baseUrl}/delete-folder');
+    // username을 쿼리로 보내거나 헤더로 보내야 함 (여기선 쿼리로)
+    final url = Uri.parse(
+      '${Constants.baseUrl}/folders/$folderId?username=$username',
+    );
     try {
-      // delete 메소드는 body를 잘 안 쓰지만, 여기선 post처럼 보내거나 request 패키지의 send 사용
-      // 편의상 post 방식과 동일하게 body를 담을 수 있는 client request 사용
-      final request = http.Request('DELETE', url);
-      request.headers.addAll({'Content-Type': 'application/json'});
-      request.body = jsonEncode({'username': username, 'folder_id': folderId});
-
-      final response = await request.send();
+      final response = await http.delete(url);
       return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-  // 4. 이미지 OCR 요청
+  // 6. OCR
   Future<Map<String, dynamic>> ocrImage(String username, File imageFile) async {
     final url = Uri.parse('${Constants.baseUrl}/ocr');
-
-    // 파일을 읽어서 Base64로 변환
-    final bytes = await imageFile.readAsBytes();
+    final bytes = await imageFile.readAsBytes(); // 파일을 읽어서 Base64로 변환
     final base64Image = base64Encode(bytes);
     final dataUri = 'data:image/jpeg;base64,$base64Image';
 
@@ -150,54 +141,47 @@ class ApiService {
     }
   }
 
-  // 5. 문제 최종 저장
+  // 7. 문제 저장
   Future<void> saveProblem(
     String username,
     String tempId,
-    String folderName,
+    int folderId, // [변경] int 타입 ID
     String answer,
     String? editedProblemText,
     List<String>? editedChoices,
   ) async {
-    final url = Uri.parse('${Constants.baseUrl}/save');
+    final url = Uri.parse('${Constants.baseUrl}/problems');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'username': username,
         'temp_id': tempId,
-        'folder_name': folderName,
+        'folder_id': folderId, // ID 전송
         'correct_answer': answer,
         'problem_text': editedProblemText,
         'choices': editedChoices,
       }),
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('저장 실패: ${utf8.decode(response.bodyBytes)}');
+    if (response.statusCode != 201) {
+      throw Exception('저장 실패');
     }
   }
 
-  // 6. 특정 폴더의 문제 목록 가져오기
-  Future<List<Problem>> getProblems(String username, String folderName) async {
-    final url = Uri.parse('${Constants.baseUrl}/problems');
+  // 8. 폴더의 문제 목록 조회
+  Future<List<Problem>> getProblems(int folderId) async {
+    final url = Uri.parse('${Constants.baseUrl}/problems?folder_id=$folderId');
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'folder_name': folderName}),
-      );
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final Map<String, dynamic> problemsMap = data['problems'];
-
-        // 맵 형태의 응답을 리스트로 변환
         List<Problem> problemList = [];
         problemsMap.forEach((key, value) {
-          // id는 키값, 나머지는 value에 있음
           final problemData = value as Map<String, dynamic>;
-          problemData['id'] = key; // 모델 생성을 위해 id 주입
+          problemData['id'] = key;
           problemList.add(Problem.fromJson(problemData));
         });
         return problemList;
@@ -208,15 +192,13 @@ class ApiService {
     return [];
   }
 
-  // 오답노트 문제 목록 가져오기
+  // 9. 오답노트 문제 목록 조회
   Future<List<Problem>> getWrongNoteProblems(String username) async {
-    final url = Uri.parse('${Constants.baseUrl}/wrong-note-problems');
+    final url = Uri.parse(
+      '${Constants.baseUrl}/wrong-notes?username=$username',
+    );
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username}),
-      );
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -240,9 +222,10 @@ class ApiService {
     List<String> problemIds,
     bool isWrongNote,
   ) async {
-    final url = Uri.parse('${Constants.baseUrl}/update-wrong-note');
+    final url = Uri.parse('${Constants.baseUrl}/problems/wrong-note');
     try {
-      final response = await http.put(
+      final response = await http.patch(
+        // PATCH 방식
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -252,7 +235,6 @@ class ApiService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('상태 변경 오류: $e');
       return false;
     }
   }

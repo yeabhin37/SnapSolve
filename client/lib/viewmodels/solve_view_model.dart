@@ -12,11 +12,11 @@ class SolveViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   // 일반 문제 불러오기
-  Future<void> loadProblems(String username, String folderName) async {
+  Future<void> loadProblems(int folderId) async {
     _isLoading = true;
     notifyListeners();
 
-    _problems = await _api.getProblems(username, folderName);
+    _problems = await _api.getProblems(folderId);
 
     _isLoading = false;
     notifyListeners();

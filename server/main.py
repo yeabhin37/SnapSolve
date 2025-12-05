@@ -4,10 +4,8 @@ import uuid
 import re
 import json
 import time
-import cv2
-import numpy as np
 import requests
-from fastapi import FastAPI, HTTPException, Depends 
+from fastapi import FastAPI, HTTPException, Depends, Query
 from sqlalchemy.orm import Session 
 from typing import List, Dict
 from database import engine, Base, get_db
@@ -20,14 +18,14 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 temp_ocr_results = {} # OCR 미리보기 결과를 임시 저장하는 곳
 
+# ------ Helper Functions ------
 def get_user_by_name(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first() 
 
-def get_folder_by_name(db: Session, user_id: int, folder_name: str):
-    return db.query(models.Folder).filter(models.Folder.user_id == user_id, models.Folder.name == folder_name).first()
+def get_folder_by_id(db: Session, folder_id: int):
+    return db.query(models.Folder).filter(models.Folder.id == folder_id).first()
 
 # --- Naver Clova OCR 파싱 함수 ---
 def parse_clova_ocr_response(response_json: Dict) -> List[Dict]:
@@ -78,58 +76,82 @@ def parse_clova_ocr_response(response_json: Dict) -> List[Dict]:
         raise HTTPException(status_code=500, detail=f"OCR 응답 파싱 실패: {e}")
 
 
-# -----------------------------
-#        API Endpoints 
-# -----------------------------
+# ---------------------------------------
+#        RESTful API Endpoints 
+# ---------------------------------------
 
-# 사용자 등록 
-@app.post("/register")
+# ------ Auth ------
+@app.post("/register", status_code=201)
 def register_user(request: schemas.UserCreate, db: Session = Depends(get_db)):
     if get_user_by_name(db, request.username):
         raise HTTPException(status_code=400, detail="이미 존재하는 사용자입니다.")
-    
-    # 비밀번호 해싱 
     hashed_password = pwd_context.hash(request.password)
-
-    # password가 오지 않아도 기본값이나 더미 값을 넣어줍니다.
-    new_user = models.User(
-        username=request.username, 
-        password_hash=hashed_password # 스키마 기본값 "1234"가 들어감
-    )
+    new_user = models.User(username=request.username, password_hash=hashed_password)
     db.add(new_user)
     db.commit()
-    return {"message": f"'{request.username}'님 환영합니다!"}
+    return {"message": "회원가입 성공"}
 
 @app.post("/login")
 def login_user(request: schemas.UserLogin, db: Session = Depends(get_db)):
     user = get_user_by_name(db, request.username)
-    if not user:
-        raise HTTPException(status_code=400, detail="사용자를 찾을 수 없습니다.")
-    
-    # 비밀번호 검증
-    if not pwd_context.verify(request.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="비밀번호가 일치하지 않습니다.")
-        
+    if not user or not pwd_context.verify(request.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="로그인 실패")
     return {"message": "로그인 성공", "username": user.username}
 
-@app.post("/create-folder")
+# ------ Folders ------
+# 폴더 목록 조회 (GET)
+@app.get("/folders")
+def get_folders(username: str = Query(...), db: Session = Depends(get_db)):
+    user = get_user_by_name(db, username)
+    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
+    
+    return {"folders": [
+        {
+            "id": f.id,
+            "name": f.name, 
+            "color": f.color, 
+            "problem_count": len(f.problems)
+        } for f in user.folders
+    ]}
+
+# 폴더 생성 (POST)
+@app.post("/folders", status_code=201)
 def create_folder(request: schemas.FolderCreate, db: Session = Depends(get_db)):
     user = get_user_by_name(db, request.username)
-    if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
     
-    if get_folder_by_name(db, user.id, request.folder_name):
-        raise HTTPException(status_code=400, detail="이미 존재하는 폴더입니다.")
-        
-    new_folder = models.Folder(
-        name=request.folder_name, 
-        user_id=user.id,
-        color=request.color
-    )
+    # 중복 체크 로직은 MVP에서 생략 가능하나 있으면 좋음
+    new_folder = models.Folder(name=request.folder_name, user_id=user.id, color=request.color)
     db.add(new_folder)
     db.commit()
-    return {"message": f"'{request.folder_name}' 폴더 생성 완료"}
+    return {"message": "폴더 생성 완료", "id": new_folder.id}
 
+# 폴더 수정 (PUT) 
+@app.put("/folders/{folder_id}")
+def update_folder(folder_id: int, request: schemas.FolderUpdate, db: Session = Depends(get_db)):
+    folder = get_folder_by_id(db, folder_id)
+    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
+    # (실제론 username으로 소유권 확인 로직 필요)
+    
+    folder.name = request.new_name
+    folder.color = request.new_color
+    db.commit()
+    return {"message": "수정 완료"}
+
+# 폴더 삭제 (DELETE)
+@app.delete("/folders/{folder_id}")
+def delete_folder(folder_id: int, username: str = Query(...), db: Session = Depends(get_db)):
+    folder = get_folder_by_id(db, folder_id)
+    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
+    # 소유권 확인
+    user = get_user_by_name(db, username)
+    if folder.user_id != user.id: raise HTTPException(status_code=403, detail="권한 없음")
+
+    db.delete(folder)
+    db.commit()
+    return {"message": "삭제 완료"}
+
+# ------ OCR ------
 @app.post("/ocr") 
 def ocr_problem(request: schemas.OcrRequest): 
     api_url = os.getenv("CLOVA_OCR_URL")
@@ -158,73 +180,33 @@ def ocr_problem(request: schemas.OcrRequest):
     temp_ocr_results[temp_id] = problem_data
     return {"temp_id": temp_id, "preview": problem_data}
 
-@app.post("/save")
-def save_problem(request: schemas.SaveRequest, db: Session = Depends(get_db)):
+# ------ Problems ------
+@app.post("/problems", status_code=201)
+def save_problem(request: schemas.SaveProblemRequest, db: Session = Depends(get_db)):
     if request.temp_id not in temp_ocr_results:
-        raise HTTPException(status_code=404, detail="만료되었거나 잘못된 임시 ID")
-    
-    user = get_user_by_name(db, request.username)
-    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
-    
-    folder = get_folder_by_name(db, user.id, request.folder_name)
-    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
+        raise HTTPException(status_code=404, detail="임시 데이터 만료")
     
     ocr_data = temp_ocr_results.pop(request.temp_id)
-    
-    final_problem_text = request.problem_text if request.problem_text else ocr_data['problem']
-    final_choices = request.choices if request.choices is not None else ocr_data['choices']
+    folder = get_folder_by_id(db, request.folder_id)
+    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
 
-    new_problem = models.Problem(
-        problem_text=final_problem_text,
+    final_text = request.problem_text if request.problem_text else ocr_data['problem']
+    final_choices = request.choices if request.choices else ocr_data['choices']
+
+    new_prob = models.Problem(
+        problem_text=final_text,
         choices=final_choices,
         correct_answer=request.correct_answer,
         folder_id=folder.id
     )
-    db.add(new_problem)
+    db.add(new_prob)
     db.commit()
-    db.refresh(new_problem)
-    return {"message": "저장 완료", "problem_id": new_problem.id}
+    return {"message": "저장 완료", "id": new_prob.id}
 
-@app.post("/folders")
-def get_folders(request: schemas.UserRequest, db: Session = Depends(get_db)):
-    user = get_user_by_name(db, request.username)
-    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
-    return {"folders": [
-        {
-            "id": f.id,
-            "name": f.name, 
-            "color": f.color, 
-            "problem_count": len(f.problems)
-        }
-        for f in user.folders
-    ]}
-
-@app.put("/update-folder")
-def update_folder(request: schemas.FolderUpdate, db: Session = Depends(get_db)):
-    # 본인 폴더인지 확인 로직 필요하지만 생략 (MVP)
-    folder = db.query(models.Folder).filter(models.Folder.id == request.folder_id).first()
-    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
-    
-    folder.name = request.new_name
-    folder.color = request.new_color
-    db.commit()
-    return {"message": "수정 완료"}
-
-@app.delete("/delete-folder")
-def delete_folder(request: schemas.FolderDelete, db: Session = Depends(get_db)):
-    folder = db.query(models.Folder).filter(models.Folder.id == request.folder_id).first()
-    if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
-    
-    db.delete(folder)
-    db.commit()
-    return {"message": "삭제 완료"}
-
-@app.post("/problems")
-def get_problems(request: schemas.FolderRequest, db: Session = Depends(get_db)):
-    user = get_user_by_name(db, request.username)
-    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
-    
-    folder = get_folder_by_name(db, user.id, request.folder_name)
+# 문제 목록 조회 (GET) 
+@app.get("/problems")
+def get_problems(folder_id: int = Query(...), db: Session = Depends(get_db)):
+    folder = get_folder_by_id(db, folder_id)
     if not folder: raise HTTPException(status_code=404, detail="폴더 없음")
     
     problems = {}
@@ -232,33 +214,23 @@ def get_problems(request: schemas.FolderRequest, db: Session = Depends(get_db)):
         problems[p.id] = {
             "problem": p.problem_text,
             "choices": p.choices,
-            "answer": p.correct_answer 
+            "answer": p.correct_answer,
+            "is_wrong_note": p.is_wrong_note
         }
     return {"problems": problems}
 
-@app.post("/solve")
-def solve_problem(request: schemas.SolveRequest, db: Session = Depends(get_db)):
-    problem = db.query(models.Problem).filter(models.Problem.id == request.problem_id).first()
-    if not problem: raise HTTPException(status_code=404, detail="문제 없음")
-    
-    if problem.correct_answer == request.user_answer:
-        return {"result": "정답입니다! 🎉"}
-    else:
-        return {"result": f"오답입니다. (정답: {problem.correct_answer})"}
-    
+# 문제 수정 (PUT)
 @app.put("/problems/{problem_id}")
 def update_problem(problem_id: str, request: schemas.UpdateProblemRequest, db: Session = Depends(get_db)):
     problem = db.query(models.Problem).filter(models.Problem.id == problem_id).first()
     if not problem: raise HTTPException(status_code=404, detail="문제 없음")
     
-    if request.problem_text:
-        problem.problem_text = request.problem_text
-    if request.correct_answer:
-        problem.correct_answer = request.correct_answer
-    
+    if request.problem_text: problem.problem_text = request.problem_text
+    if request.correct_answer: problem.correct_answer = request.correct_answer
     db.commit()
-    return {"message": "문제 수정 완료"}
+    return {"message": "수정 완료"}
 
+# 문제 삭제 (DELETE) 
 @app.delete("/problems/{problem_id}")
 def delete_problem(problem_id: str, db: Session = Depends(get_db)):
     problem = db.query(models.Problem).filter(models.Problem.id == problem_id).first()
@@ -268,14 +240,24 @@ def delete_problem(problem_id: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "문제 삭제 완료"}
 
-# 오답노트 문제 목록 가져오기 (특정 폴더가 아니라 전체 중에서 is_wrong_note=True인 것)
-@app.post("/wrong-note-problems")
-def get_wrong_note_problems(request: schemas.UserRequest, db: Session = Depends(get_db)):
-    user = get_user_by_name(db, request.username)
+# 문제 정답 확인 (채점)
+@app.post("/problems/{problem_id}/check")
+def check_answer(problem_id: str, request: schemas.SolveRequest, db: Session = Depends(get_db)):
+    problem = db.query(models.Problem).filter(models.Problem.id == problem_id).first()
+    if not problem: raise HTTPException(status_code=404, detail="문제 없음")
+    
+    is_correct = (problem.correct_answer == request.user_answer)
+    return {"result": "정답" if is_correct else "오답", "is_correct": is_correct}
+
+
+# ------ Wrong Notes ------
+
+# 10. 오답노트 조회 (GET)
+@app.get("/wrong-notes")
+def get_wrong_notes(username: str = Query(...), db: Session = Depends(get_db)):
+    user = get_user_by_name(db, username)
     if not user: raise HTTPException(status_code=404, detail="사용자 없음")
     
-    # 사용자의 모든 폴더를 뒤져서 오답노트 문제만 필터링
-    # (더 효율적인 쿼리는 Join을 써야 하지만, MVP 로직으로 구현)
     wrong_problems = {}
     for folder in user.folders:
         for p in folder.problems:
@@ -284,17 +266,15 @@ def get_wrong_note_problems(request: schemas.UserRequest, db: Session = Depends(
                     "problem": p.problem_text,
                     "choices": p.choices,
                     "answer": p.correct_answer,
-                    "is_wrong_note": True # 클라이언트 확인용
+                    "is_wrong_note": True
                 }
     return {"problems": wrong_problems}
 
-# 문제의 오답노트 상태 변경 (별표, 저장 버튼, 졸업 기능 공용)
-@app.put("/update-wrong-note")
-def update_wrong_note(request: schemas.WrongNoteUpdate, db: Session = Depends(get_db)):
-    # IN 연산자를 사용하여 여러 문제를 한 번에 업데이트
+#  오답노트 상태 일괄 변경 (PATCH) -> 부분 업데이트 의미
+@app.patch("/problems/wrong-note")
+def bulk_update_wrong_note(request: schemas.WrongNoteUpdate, db: Session = Depends(get_db)):
     db.query(models.Problem).\
         filter(models.Problem.id.in_(request.problem_ids)).\
         update({models.Problem.is_wrong_note: request.is_wrong_note}, synchronize_session=False)
-    
     db.commit()
     return {"message": "업데이트 완료"}

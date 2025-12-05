@@ -52,7 +52,7 @@ class OcrViewModel extends ChangeNotifier {
   // 2. 최종 저장
   Future<bool> saveProblem(
     String username,
-    String folderName,
+    int folderId,
     String answer,
     String editedProblem,
     List<String> editedChoices,
@@ -68,7 +68,7 @@ class OcrViewModel extends ChangeNotifier {
       await _api.saveProblem(
         username,
         _tempId!,
-        folderName,
+        folderId,
         answer,
         editedProblem,
         editedChoices,

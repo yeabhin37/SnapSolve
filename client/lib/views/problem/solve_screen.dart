@@ -9,11 +9,13 @@ import '../camera/ocr_preview_screen.dart';
 
 class SolveScreen extends StatefulWidget {
   final String folderName;
+  final int folderId;
   final bool isWrongNoteMode;
 
   const SolveScreen({
     super.key,
     required this.folderName,
+    this.folderId = -1,
     this.isWrongNoteMode = false,
   });
 
@@ -45,7 +47,7 @@ class _SolveScreenState extends State<SolveScreen> {
       if (widget.isWrongNoteMode) {
         solveVM.loadWrongNoteProblems(username);
       } else {
-        solveVM.loadProblems(username, widget.folderName);
+        solveVM.loadProblems(widget.folderId);
       }
       // context.read<SolveViewModel>().loadProblems(username, widget.folderName);
     });
