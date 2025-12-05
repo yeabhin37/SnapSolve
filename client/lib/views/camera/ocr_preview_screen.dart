@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,6 +19,12 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   final TextEditingController _answerController = TextEditingController();
   final TextEditingController _memoController = TextEditingController();
 
+  // 선지들을 관리할 컨트롤러 리스트
+  List<TextEditingController> _choiceControllers = [];
+
+  // 데이터가 초기화되었는지 확인하는 플래그
+  bool _isDataLoaded = false;
+
   String? _selectedFolder; // 저장할 폴더
 
   @override
@@ -31,6 +38,18 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   }
 
   @override
+  void dispose() {
+    _problemController.dispose();
+    _answerController.dispose();
+    _memoController.dispose();
+    // 선지 컨트롤러들도 해제
+    for (var controller in _choiceControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ocrVM = context.watch<OcrViewModel>();
     final userVM = context.read<UserViewModel>();
@@ -40,29 +59,22 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     // 1. 에러 발생 시 화면
     // ---------------------------------------------------------
     if (ocrVM.errorMessage != null) {
+      _isDataLoaded = false; // 에러 나면 데이터 로드 상태 초기화
       return Scaffold(
         appBar: AppBar(title: const Text("오류 발생")),
         body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 60, color: Colors.red),
-                const SizedBox(height: 20),
-                const Text(
-                  "오류가 발생했습니다",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Text(ocrVM.errorMessage!, textAlign: TextAlign.center),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () => ocrVM.clear(),
-                  child: const Text("다시 시도"),
-                ),
-              ],
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 60, color: Colors.red),
+              const SizedBox(height: 20),
+              Text(ocrVM.errorMessage!),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: () => ocrVM.clear(),
+                child: const Text("다시 시도"),
+              ),
+            ],
           ),
         ),
       );
@@ -93,6 +105,9 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     // 3. 촬영 전 (카메라/갤러리 선택) - 디자인 프로토타입 3번째 장 스타일
     // ---------------------------------------------------------
     if (ocrVM.ocrResult == null) {
+      _isDataLoaded = false; // 데이터 로드 상태 초기화
+      _choiceControllers.clear(); // 컨트롤러 초기화
+
       return Scaffold(
         backgroundColor: Colors.grey.shade600, // 배경 어둡게 처리 (모달 느낌)
         appBar: AppBar(
@@ -107,7 +122,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
           children: [
             const Spacer(),
             const Text(
-              "문제집 스캔하기",
+              "문제집 스캔 결과",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -188,13 +203,22 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     }
 
     // ---------------------------------------------------------
-    // 4. 결과 확인 및 수정 화면 (Form) - 디자인 프로토타입 4번째 장 스타일
+    // 4. 결과 확인 및 수정 화면 (Form)
     // ---------------------------------------------------------
 
-    // 초기값 세팅
-    if (_problemController.text.isEmpty) {
+    // OCR 결과가 처음 들어왔을 때만 컨트롤러에 값을 채워넣습니다.
+    if (!_isDataLoaded && ocrVM.ocrResult != null) {
       _problemController.text = ocrVM.ocrResult!['problem'] ?? "";
+
+      // 선지 컨트롤러 초기화
+      final choices = List<String>.from(ocrVM.ocrResult!['choices'] ?? []);
+      _choiceControllers = choices
+          .map((c) => TextEditingController(text: c))
+          .toList();
+
+      _isDataLoaded = true; // 로드 완료 표시
     }
+
     // 폴더 자동 선택
     if (_selectedFolder == null && folderVM.folders.isNotEmpty) {
       _selectedFolder = folderVM.folders[0].name;
@@ -205,11 +229,11 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
         title: const Text("문제집 스캔하기"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => ocrVM.clear(),
+          onPressed: () {
+            ocrVM.clear();
+            setState(() => _isDataLoaded = false);
+          },
         ),
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.settings)),
-        ],
       ),
       body: Column(
         children: [
@@ -236,6 +260,11 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   const SizedBox(height: 30),
 
                   // 1. 문제 이름 (텍스트)
+                  const Text(
+                    "문제 지문",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
                   _buildGrayInputContainer(
                     child: TextField(
                       controller: _problemController,
@@ -243,50 +272,77 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: "문제 이름",
-                        labelText: "문제 이름",
-                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        // labelText: "문제 이름",
+                        // floatingLabelBehavior: FloatingLabelBehavior.always,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
-                  // (참고용) 인식된 선지가 있다면 표시
-                  if (ocrVM.ocrResult!['choices'] != null &&
-                      (ocrVM.ocrResult!['choices'] as List).isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 15),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "인식된 선지:",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                  // 선지 수정 영역 (동적 리스트)
+                  if (_choiceControllers.isNotEmpty) ...[
+                    const Text(
+                      "선지 목록",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: List.generate(_choiceControllers.length, (
+                          index,
+                        ) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 12.0,
+                                    right: 10,
+                                  ),
+                                  child: Text(
+                                    "①②③④⑤"[index % 5],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1E2B58),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _buildGrayInputContainer(
+                                    child: TextField(
+                                      controller: _choiceControllers[index],
+                                      maxLines: null, // 여러 줄 허용
+                                      decoration: InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText: "선지 ${index + 1}",
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 5),
-                            ...List<String>.from(
-                              ocrVM.ocrResult!['choices'],
-                            ).map(
-                              (c) => Text(
-                                "• $c",
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        }),
                       ),
                     ),
+                    const SizedBox(height: 20),
+                  ],
 
                   // 2. 문제 정답
+                  const Text(
+                    "정답",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
                   _buildGrayInputContainer(
                     child: TextField(
                       controller: _answerController,
@@ -294,22 +350,29 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: "예: 3",
-                        labelText: "문제 정답",
-                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        contentPadding: EdgeInsets.all(10),
+                        // labelText: "문제 정답",
+                        // floatingLabelBehavior: FloatingLabelBehavior.always,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
-                  // 3. 저장 폴더 (드롭다운)
+                  // 3. 저장 폴더
+                  const Text(
+                    "저장 폴더",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
                   _buildGrayInputContainer(
                     child: DropdownButtonHideUnderline(
                       child: DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
                           border: InputBorder.none,
-                          labelText: "저장 폴더",
-                          floatingLabelBehavior: FloatingLabelBehavior.always,
-                          contentPadding: EdgeInsets.zero,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                          // labelText: "저장 폴더",
+                          // floatingLabelBehavior: FloatingLabelBehavior.always,
+                          // contentPadding: EdgeInsets.zero,
                         ),
                         value: _selectedFolder,
                         isExpanded: true,
@@ -325,19 +388,28 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
                   // 4. 메모
+                  const Text(
+                    "메모",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
                   _buildGrayInputContainer(
                     height: 120,
                     child: TextField(
                       controller: _memoController,
                       maxLines: null,
+                      minLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: "메모를 입력하세요",
-                        labelText: "메모",
-                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        contentPadding: EdgeInsets.all(10),
+                        // labelText: "메모",
+                        // floatingLabelBehavior: FloatingLabelBehavior.always,
                       ),
                     ),
                   ),
@@ -365,14 +437,22 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                         elevation: 0,
                       ),
                       onPressed: () {
-                        // 사실 지금 화면이 수정 화면이므로, 키보드를 내리거나 하는 동작
-                        FocusScope.of(context).unfocus();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("내용을 수정해주세요.")),
-                        );
+                        // [ver1] 사실 지금 화면이 수정 화면이므로, 키보드를 내리거나 하는 동작
+
+                        // FocusScope.of(context).unfocus();
+                        // ScaffoldMessenger.of(context).showSnackBar(
+                        //   const SnackBar(content: Text("내용을 수정해주세요.")),
+                        // );
+
+                        // [ver2] 초기화 로직
+                        ocrVM.clear();
+                        _problemController.clear();
+                        _answerController.clear();
+                        _memoController.clear();
+                        setState(() => _isDataLoaded = false);
                       },
                       child: const Text(
-                        "수정하기",
+                        "취소",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -407,20 +487,29 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                           return;
                         }
 
-                        // 저장 로직 호출
+                        // 수정된 선지 리스트 수집
+                        List<String> finalChoices = _choiceControllers
+                            .map((c) => c.text)
+                            .toList();
+
+                        // 저장 요청
                         final success = await ocrVM.saveProblem(
                           userVM.username,
                           _selectedFolder!,
                           _answerController.text,
-                          _problemController.text,
-                          [],
+                          _problemController.text, // 수정된 문제 텍스트
+                          finalChoices, // 수정된 선지 리스트 (참고: API가 지원해야 저장됨)
+                          // []
                         );
 
                         if (success && context.mounted) {
+                          await folderVM.loadFolders(userVM.username);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("저장 완료!")),
                           );
-                          Navigator.pop(context); // 탭 화면으로 복귀
+                          Navigator.of(
+                            context,
+                          ).popUntil((route) => route.isFirst);
                         }
                       },
                       child: const Text(
@@ -445,12 +534,13 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   Widget _buildGrayInputContainer({required Widget child, double? height}) {
     return Container(
       height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
       decoration: BoxDecoration(
         color: const Color(0xFFEBEFF5), // 연한 회색 배경
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Center(child: child),
+      // child: Center(child: child),
+      child: child,
     );
   }
 }

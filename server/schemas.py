@@ -8,6 +8,9 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+
+class UserRequest(BaseModel):
+    username: str 
     
 class FolderCreate(BaseModel):
     username: str
@@ -28,6 +31,10 @@ class FolderResponse(BaseModel):
     id: int
     name: str
 
+class FolderRequest(BaseModel):
+    username: str
+    folder_name: str
+
 class ProblemBase(BaseModel):
     problem: str
     choices: List[str]
@@ -44,6 +51,7 @@ class SaveRequest(BaseModel):
     folder_name: str
     correct_answer: str
     problem_text: Optional[str] = None
+    choices: Optional[List[str]] = None
 
 class SolveRequest(BaseModel):
     username: str
@@ -57,3 +65,7 @@ class UpdateProblemRequest(BaseModel):
 class OcrRequest(BaseModel):
     username: str
     image_data: str
+
+class WrongNoteUpdate(BaseModel):
+    problem_ids: List[str]
+    is_wrong_note: bool 

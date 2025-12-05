@@ -157,6 +157,7 @@ class ApiService {
     String folderName,
     String answer,
     String? editedProblemText,
+    List<String>? editedChoices,
   ) async {
     final url = Uri.parse('${Constants.baseUrl}/save');
     final response = await http.post(
@@ -168,6 +169,7 @@ class ApiService {
         'folder_name': folderName,
         'correct_answer': answer,
         'problem_text': editedProblemText,
+        'choices': editedChoices,
       }),
     );
 
@@ -204,5 +206,54 @@ class ApiService {
       print('문제 목록 조회 오류: $e');
     }
     return [];
+  }
+
+  // 오답노트 문제 목록 가져오기
+  Future<List<Problem>> getWrongNoteProblems(String username) async {
+    final url = Uri.parse('${Constants.baseUrl}/wrong-note-problems');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'username': username}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final Map<String, dynamic> problemsMap = data['problems'];
+        List<Problem> problemList = [];
+        problemsMap.forEach((key, value) {
+          final problemData = value as Map<String, dynamic>;
+          problemData['id'] = key;
+          problemList.add(Problem.fromJson(problemData));
+        });
+        return problemList;
+      }
+    } catch (e) {
+      print('오답노트 조회 오류: $e');
+    }
+    return [];
+  }
+
+  // 오답노트 상태 변경 (별표, 저장 등)
+  Future<bool> updateWrongNoteStatus(
+    List<String> problemIds,
+    bool isWrongNote,
+  ) async {
+    final url = Uri.parse('${Constants.baseUrl}/update-wrong-note');
+    try {
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'problem_ids': problemIds,
+          'is_wrong_note': isWrongNote,
+        }),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('상태 변경 오류: $e');
+      return false;
+    }
   }
 }

@@ -60,9 +60,75 @@ class _WorkbookTabState extends State<WorkbookTab> {
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: folderVM.folders.length,
+                    itemCount: folderVM.folders.length + 1, // 오답노트용 1개
                     itemBuilder: (context, index) {
-                      final folder = folderVM.folders[index];
+                      // 0번 인덱스는 무조건 '오답노트' 폴더
+                      if (index == 0) {
+                        return InkWell(
+                          onTap: () {
+                            // 오답노트 모드로 진입 (folderName에 특수 값 전달)
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SolveScreen(
+                                  folderName: "오답노트",
+                                  isWrongNoteMode: true,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 15),
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF0F0), // 연한 붉은색 배경
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.red.shade100),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 50,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent, // 빨간 아이콘 배경
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.bookmark,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                const Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "오답노트",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.redAccent,
+                                      ),
+                                    ),
+                                    Text(
+                                      "틀린 문제를 복습하세요",
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const Spacer(),
+                                // 오답노트는 수정/삭제 메뉴 없음
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      final folder = folderVM.folders[index - 1];
                       // 서버에서 받은 Hex String -> Color 객체 변환
                       final colorInt = int.parse(folder.color);
                       final folderColor = Color(colorInt);
@@ -239,6 +305,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                     autofocus: !isEdit,
                     decoration: const InputDecoration(
                       hintText: '예: 수학, 영어',
+                      hintStyle: TextStyle(color: Colors.grey),
                       enabledBorder: UnderlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey),
                       ),
@@ -297,10 +364,18 @@ class _WorkbookTabState extends State<WorkbookTab> {
                 ],
               ),
               actions: [
+                // 취소 버튼
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('취소', style: TextStyle(color: Colors.grey)),
+                  child: const Text(
+                    '취소',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
+                // 폴더 생성 버튼
                 TextButton(
                   onPressed: () async {
                     final name = controller.text.trim();

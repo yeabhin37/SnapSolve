@@ -14,7 +14,7 @@ from database import engine, Base, get_db
 import models, schemas 
 from passlib.context import CryptContext
 
-models.Base.metadata.drop_all(bind=engine)   # 기존 테이블 삭제
+models.Base.metadata.drop_all(bind=engine)   # 데이터베이스 초기화. 필요시 주석 해제하기 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -172,10 +172,11 @@ def save_problem(request: schemas.SaveRequest, db: Session = Depends(get_db)):
     ocr_data = temp_ocr_results.pop(request.temp_id)
     
     final_problem_text = request.problem_text if request.problem_text else ocr_data['problem']
+    final_choices = request.choices if request.choices is not None else ocr_data['choices']
 
     new_problem = models.Problem(
         problem_text=final_problem_text,
-        choices=ocr_data['choices'],
+        choices=final_choices,
         correct_answer=request.correct_answer,
         folder_id=folder.id
     )
@@ -185,7 +186,7 @@ def save_problem(request: schemas.SaveRequest, db: Session = Depends(get_db)):
     return {"message": "저장 완료", "problem_id": new_problem.id}
 
 @app.post("/folders")
-def get_folders(request: schemas.UserCreate, db: Session = Depends(get_db)):
+def get_folders(request: schemas.UserRequest, db: Session = Depends(get_db)):
     user = get_user_by_name(db, request.username)
     if not user: raise HTTPException(status_code=404, detail="사용자 없음")
     return {"folders": [
@@ -219,7 +220,7 @@ def delete_folder(request: schemas.FolderDelete, db: Session = Depends(get_db)):
     return {"message": "삭제 완료"}
 
 @app.post("/problems")
-def get_problems(request: schemas.FolderCreate, db: Session = Depends(get_db)):
+def get_problems(request: schemas.FolderRequest, db: Session = Depends(get_db)):
     user = get_user_by_name(db, request.username)
     if not user: raise HTTPException(status_code=404, detail="사용자 없음")
     
@@ -231,7 +232,7 @@ def get_problems(request: schemas.FolderCreate, db: Session = Depends(get_db)):
         problems[p.id] = {
             "problem": p.problem_text,
             "choices": p.choices,
-            "answer": p.correct_answer # 클라이언트 확인용 (실제론 숨겨야 할 수도 있음)
+            "answer": p.correct_answer 
         }
     return {"problems": problems}
 
@@ -266,3 +267,34 @@ def delete_problem(problem_id: str, db: Session = Depends(get_db)):
     db.delete(problem)
     db.commit()
     return {"message": "문제 삭제 완료"}
+
+# 오답노트 문제 목록 가져오기 (특정 폴더가 아니라 전체 중에서 is_wrong_note=True인 것)
+@app.post("/wrong-note-problems")
+def get_wrong_note_problems(request: schemas.UserRequest, db: Session = Depends(get_db)):
+    user = get_user_by_name(db, request.username)
+    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
+    
+    # 사용자의 모든 폴더를 뒤져서 오답노트 문제만 필터링
+    # (더 효율적인 쿼리는 Join을 써야 하지만, MVP 로직으로 구현)
+    wrong_problems = {}
+    for folder in user.folders:
+        for p in folder.problems:
+            if p.is_wrong_note:
+                wrong_problems[p.id] = {
+                    "problem": p.problem_text,
+                    "choices": p.choices,
+                    "answer": p.correct_answer,
+                    "is_wrong_note": True # 클라이언트 확인용
+                }
+    return {"problems": wrong_problems}
+
+# 문제의 오답노트 상태 변경 (별표, 저장 버튼, 졸업 기능 공용)
+@app.put("/update-wrong-note")
+def update_wrong_note(request: schemas.WrongNoteUpdate, db: Session = Depends(get_db)):
+    # IN 연산자를 사용하여 여러 문제를 한 번에 업데이트
+    db.query(models.Problem).\
+        filter(models.Problem.id.in_(request.problem_ids)).\
+        update({models.Problem.is_wrong_note: request.is_wrong_note}, synchronize_session=False)
+    
+    db.commit()
+    return {"message": "업데이트 완료"}

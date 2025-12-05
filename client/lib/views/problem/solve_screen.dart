@@ -9,8 +9,13 @@ import '../camera/ocr_preview_screen.dart';
 
 class SolveScreen extends StatefulWidget {
   final String folderName;
+  final bool isWrongNoteMode;
 
-  const SolveScreen({super.key, required this.folderName});
+  const SolveScreen({
+    super.key,
+    required this.folderName,
+    this.isWrongNoteMode = false,
+  });
 
   @override
   State<SolveScreen> createState() => _SolveScreenState();
@@ -35,7 +40,14 @@ class _SolveScreenState extends State<SolveScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final username = context.read<UserViewModel>().username;
-      context.read<SolveViewModel>().loadProblems(username, widget.folderName);
+      final solveVM = context.read<SolveViewModel>();
+
+      if (widget.isWrongNoteMode) {
+        solveVM.loadWrongNoteProblems(username);
+      } else {
+        solveVM.loadProblems(username, widget.folderName);
+      }
+      // context.read<SolveViewModel>().loadProblems(username, widget.folderName);
     });
   }
 
@@ -45,6 +57,12 @@ class _SolveScreenState extends State<SolveScreen> {
     final totalProblems = solveVM.problems.length;
     final isEmpty = !solveVM.isLoading && solveVM.problems.isEmpty;
 
+    Problem? currentProblem;
+    if (solveVM.problems.isNotEmpty &&
+        _currentProblemIndex < solveVM.problems.length) {
+      currentProblem = solveVM.problems[_currentProblemIndex];
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.folderName), // 폴더명 (예: ADP 필기)
@@ -52,6 +70,23 @@ class _SolveScreenState extends State<SolveScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // 문제 풀 때 별표 체크 (오답노트 추가/제거)
+          if (!_isFinished && currentProblem != null)
+            IconButton(
+              icon: Icon(
+                currentProblem.isWrongNote ? Icons.star : Icons.star_border,
+                color: currentProblem.isWrongNote ? Colors.amber : Colors.grey,
+                size: 30,
+              ),
+              onPressed: () {
+                // 현재 상태 반전시켜서 서버 요청
+                final newState = !currentProblem!.isWrongNote;
+                solveVM.updateWrongNote([currentProblem.id], newState);
+              },
+            ),
+          const SizedBox(width: 10),
+        ],
       ),
       body: solveVM.isLoading
           ? const Center(
@@ -123,118 +158,124 @@ class _SolveScreenState extends State<SolveScreen> {
               backgroundColor: const Color(0xFF1E2B58),
               shape: const CircleBorder(),
               child: const Icon(Icons.camera_alt_outlined, color: Colors.white),
-              onPressed: () => _showScanBottomSheet(context),
+              // onPressed: () => _showScanBottomSheet(context),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),
+                );
+              },
             )
           : null,
     );
   }
 
-  void _showScanBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent, // 뒤에 둥근 모서리 보이게 투명 처리
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(25),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25),
-              topRight: Radius.circular(25),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // 내용물 크기만큼만 높이 차지
-            children: [
-              // 상단 핸들 (회색 바)
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
+  // void _showScanBottomSheet(BuildContext context) {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.transparent, // 뒤에 둥근 모서리 보이게 투명 처리
+  //     builder: (context) {
+  //       return Container(
+  //         padding: const EdgeInsets.all(25),
+  //         decoration: const BoxDecoration(
+  //           color: Colors.white,
+  //           borderRadius: BorderRadius.only(
+  //             topLeft: Radius.circular(25),
+  //             topRight: Radius.circular(25),
+  //           ),
+  //         ),
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min, // 내용물 크기만큼만 높이 차지
+  //           children: [
+  //             // 상단 핸들 (회색 바)
+  //             Container(
+  //               width: 40,
+  //               height: 4,
+  //               decoration: BoxDecoration(
+  //                 color: Colors.grey.shade300,
+  //                 borderRadius: BorderRadius.circular(2),
+  //               ),
+  //             ),
+  //             const SizedBox(height: 20),
 
-              // 타이틀
-              const Text(
-                "문제집 스캔하기",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E2B58),
-                ),
-              ),
-              const SizedBox(height: 30),
+  //             // 타이틀
+  //             const Text(
+  //               "문제집 스캔하기",
+  //               style: TextStyle(
+  //                 fontSize: 20,
+  //                 fontWeight: FontWeight.bold,
+  //                 color: Color(0xFF1E2B58),
+  //               ),
+  //             ),
+  //             const SizedBox(height: 30),
 
-              // 1. 카메라로 스캔 버튼
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E2B58), // 네이비
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context); // 시트 닫기
-                    _processScan(ImageSource.camera); // 촬영 시작
-                  },
-                  child: const Text(
-                    "카메라로 스캔",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
+  //             // 1. 카메라로 스캔 버튼
+  //             SizedBox(
+  //               width: double.infinity,
+  //               height: 55,
+  //               child: ElevatedButton(
+  //                 style: ElevatedButton.styleFrom(
+  //                   backgroundColor: const Color(0xFF1E2B58), // 네이비
+  //                   shape: RoundedRectangleBorder(
+  //                     borderRadius: BorderRadius.circular(12),
+  //                   ),
+  //                 ),
+  //                 onPressed: () {
+  //                   Navigator.pop(context); // 시트 닫기
+  //                   _processScan(ImageSource.camera); // 촬영 시작
+  //                 },
+  //                 child: const Text(
+  //                   "카메라로 스캔",
+  //                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //                 ),
+  //               ),
+  //             ),
+  //             const SizedBox(height: 15),
 
-              // 2. 갤러리에서 선택 버튼
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEBEFF5), // 연한 회색/보라
-                    foregroundColor: Colors.black87, // 글자색 검정
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context); // 시트 닫기
-                    _processScan(ImageSource.gallery); // 갤러리 열기
-                  },
-                  child: const Text(
-                    "갤러리에서 선택",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  //             // 2. 갤러리에서 선택 버튼
+  //             SizedBox(
+  //               width: double.infinity,
+  //               height: 55,
+  //               child: ElevatedButton(
+  //                 style: ElevatedButton.styleFrom(
+  //                   backgroundColor: const Color(0xFFEBEFF5), // 연한 회색/보라
+  //                   foregroundColor: Colors.black87, // 글자색 검정
+  //                   elevation: 0,
+  //                   shape: RoundedRectangleBorder(
+  //                     borderRadius: BorderRadius.circular(12),
+  //                   ),
+  //                 ),
+  //                 onPressed: () {
+  //                   Navigator.pop(context); // 시트 닫기
+  //                   _processScan(ImageSource.gallery); // 갤러리 열기
+  //                 },
+  //                 child: const Text(
+  //                   "갤러리에서 선택",
+  //                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //                 ),
+  //               ),
+  //             ),
+  //             const SizedBox(height: 20),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
-  void _processScan(ImageSource source) {
-    final userVM = context.read<UserViewModel>();
-    final ocrVM = context.read<OcrViewModel>();
+  // void _processScan(ImageSource source) {
+  //   final userVM = context.read<UserViewModel>();
+  //   final ocrVM = context.read<OcrViewModel>();
 
-    // 1. 이미지 피킹 및 OCR 요청 시작
-    ocrVM.pickAndScanImage(userVM.username, source);
+  //   // 1. 이미지 피킹 및 OCR 요청 시작
+  //   ocrVM.pickAndScanImage(userVM.username, source);
 
-    // 2. 결과 확인 화면으로 이동 (로딩 상태를 보여줌)
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),
-    );
-  }
+  //   // 2. 결과 확인 화면으로 이동 (로딩 상태를 보여줌)
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),
+  //   );
+  // }
 
   Widget _buildEmptyView() {
     return Center(
@@ -264,8 +305,10 @@ class _SolveScreenState extends State<SolveScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            "새로운 문제를 스캔하여 나만의 학습지를 만들어보세요.",
+          Text(
+            widget.isWrongNoteMode
+                ? "오답노트에 추가된 문제가 없습니다."
+                : "새로운 문제를 스캔하여 나만의 학습지를 만들어보세요.",
             style: TextStyle(fontSize: 14, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
@@ -306,9 +349,8 @@ class _SolveScreenState extends State<SolveScreen> {
             ...problem.choices.asMap().entries.map((entry) {
               final idx = entry.key + 1; // 1, 2, 3...
               final text = entry.value;
-
-              // 선택 상태 확인
-              final isSelected = _userAnswers[problem.id] == idx.toString();
+              final isSelected =
+                  _userAnswers[problem.id] == idx.toString(); // 선택 상태 확인
 
               // 정답 체크 후 스타일링
               Color borderColor = Colors.transparent;
@@ -446,7 +488,7 @@ class _SolveScreenState extends State<SolveScreen> {
       color: Colors.white,
       child: Row(
         children: [
-          // 왼쪽: 정답 확인 버튼 (아직 확인 안 했을 때만)
+          // 정답 확인 버튼 (이미 확인했으면 숨김)
           if (!_isCurrentAnswerChecked)
             Expanded(
               child: SizedBox(
@@ -499,13 +541,13 @@ class _SolveScreenState extends State<SolveScreen> {
                   ),
                 ),
                 onPressed: () {
-                  if (!_isCurrentAnswerChecked) {
-                    // 확인 안 하고 넘어가려 하면 경고 (선택사항)
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("먼저 정답을 확인해주세요.")),
-                    );
-                    return;
-                  }
+                  // if (!_isCurrentAnswerChecked) {
+                  //   // 확인 안 하고 넘어가려 하면 경고 (선택사항)
+                  //   ScaffoldMessenger.of(context).showSnackBar(
+                  //     const SnackBar(content: Text("먼저 정답을 확인해주세요.")),
+                  //   );
+                  //   return;
+                  // }
 
                   if (isLastPage) {
                     setState(() => _isFinished = true); // 결과 화면으로 전환
@@ -533,10 +575,43 @@ class _SolveScreenState extends State<SolveScreen> {
 
   Widget _buildScoreView(List<Problem> problems) {
     int correctCount = 0;
-    _results.forEach((_, isCorrect) {
-      if (isCorrect) correctCount++;
-    });
-    final score = (correctCount / problems.length * 100).toInt();
+
+    // [ver1] 정답 확인 버튼 누른 것만 카운트
+    // _results.forEach((_, isCorrect) {
+    //   if (isCorrect) correctCount++;
+    // });
+    // final score = (correctCount / problems.length * 100).toInt();
+
+    // [ver2] 전체 문제를 돌면서, 사용자 입력 답과 정답을 비교
+    // for (var problem in problems) {
+    //   final userAnswer = _userAnswers[problem.id];
+    //   // 답을 선택했고, 그 답이 정답과 같으면 정답 처리
+    //   if (userAnswer != null && problem.correctAnswer == userAnswer) {
+    //     correctCount++;
+    //   }
+    // }
+    // final score = problems.isEmpty
+    //     ? 0
+    //     : (correctCount / problems.length * 100).toInt();
+
+    // [ver3] 오답노트 기능 추가
+    // 이번 시험에서 틀린 문제 ID 목록 추출
+    List<String> wrongProblemIds = [];
+    List<String> correctProblemIds = []; // 맞힌 문제
+
+    for (var problem in problems) {
+      final userAnswer = _userAnswers[problem.id];
+      if (userAnswer != null && problem.correctAnswer == userAnswer) {
+        correctCount++;
+        correctProblemIds.add(problem.id);
+      } else {
+        wrongProblemIds.add(problem.id);
+      }
+    }
+
+    final score = problems.isEmpty
+        ? 0
+        : (correctCount / problems.length * 100).toInt();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -624,33 +699,148 @@ class _SolveScreenState extends State<SolveScreen> {
           ),
           const SizedBox(height: 30),
 
-          // 기능 버튼들
-          _buildActionButton(
-            "틀린 문제 오답 노트에 저장",
-            Colors.grey.shade200,
-            Colors.black87,
-          ),
-          const SizedBox(height: 15),
-          _buildActionButton(
-            "나만의 문제은행에 추가",
-            Colors.grey.shade200,
-            Colors.black87,
-          ),
-          const SizedBox(height: 15),
+          // // 기능 버튼들
+          // _buildActionButton(
+          //   "틀린 문제 오답 노트에 저장",
+          //   Colors.grey.shade200,
+          //   Colors.black87,
+          // ),
+          // const SizedBox(height: 15),
+          // _buildActionButton(
+          //   "나만의 문제은행에 추가",
+          //   Colors.grey.shade200,
+          //   Colors.black87,
+          // ),
+          // const SizedBox(height: 15),
 
-          // 다시 풀기 (민트색 강조)
+          // // 다시 풀기 (민트색 강조)
+          // SizedBox(
+          //   width: double.infinity,
+          //   height: 55,
+          //   child: ElevatedButton(
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: const Color(0xFF2EBA9F), // 민트
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(12),
+          //       ),
+          //     ),
+          //     onPressed: () {
+          //       // 초기화 후 다시 시작
+          //       setState(() {
+          //         _currentProblemIndex = 0;
+          //         _isFinished = false;
+          //         _userAnswers.clear();
+          //         _results.clear();
+          //         _isCurrentAnswerChecked = false;
+          //       });
+          //     },
+          //     child: const Text(
+          //       "다시 풀기",
+          //       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          //     ),
+          //   ),
+          // ),
+
+          // const SizedBox(height: 15),
+          // TextButton(
+          //   onPressed: () => Navigator.pop(context), // 뒤로가기
+          //   child: const Text("홈으로 돌아가기", style: TextStyle(color: Colors.grey)),
+          // ),
+          if (wrongProblemIds.isNotEmpty && !widget.isWrongNoteMode)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFF0F0), // 연한 빨강
+                    foregroundColor: Colors.redAccent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final solveVM = context.read<SolveViewModel>();
+                    await solveVM.updateWrongNote(
+                      wrongProblemIds,
+                      true,
+                    ); // true = 추가
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "${wrongProblemIds.length}문제가 오답노트에 추가되었습니다.",
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text(
+                    "틀린 문제 오답 노트에 저장",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+
+          // ------------------------------------------------------------------
+          // [기능] 맞힌 문제 오답 노트에서 삭제 (오답노트 모드일 때만 보임)
+          // ------------------------------------------------------------------
+          if (correctProblemIds.isNotEmpty && widget.isWrongNoteMode)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE8F5E9), // 연한 초록
+                    foregroundColor: Colors.green,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final solveVM = context.read<SolveViewModel>();
+                    await solveVM.updateWrongNote(
+                      correctProblemIds,
+                      false,
+                    ); // false = 제거
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "${correctProblemIds.length}문제를 마스터했습니다! (오답노트 해제)",
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text(
+                    "맞힌 문제 오답노트에서 삭제",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+
+          // 다시 풀기 버튼
           SizedBox(
             width: double.infinity,
             height: 55,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2EBA9F), // 민트
+                backgroundColor: const Color(0xFF2EBA9F),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               onPressed: () {
-                // 초기화 후 다시 시작
                 setState(() {
                   _currentProblemIndex = 0;
                   _isFinished = false;
@@ -665,10 +855,9 @@ class _SolveScreenState extends State<SolveScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 15),
           TextButton(
-            onPressed: () => Navigator.pop(context), // 뒤로가기
+            onPressed: () => Navigator.pop(context),
             child: const Text("홈으로 돌아가기", style: TextStyle(color: Colors.grey)),
           ),
         ],
@@ -676,25 +865,25 @@ class _SolveScreenState extends State<SolveScreen> {
     );
   }
 
-  Widget _buildActionButton(String label, Color bgColor, Color textColor) {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: bgColor,
-          foregroundColor: textColor,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        onPressed: () {}, // 기능 미구현 (UI용)
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
+  // Widget _buildActionButton(String label, Color bgColor, Color textColor) {
+  //   return SizedBox(
+  //     width: double.infinity,
+  //     height: 55,
+  //     child: ElevatedButton(
+  //       style: ElevatedButton.styleFrom(
+  //         backgroundColor: bgColor,
+  //         foregroundColor: textColor,
+  //         elevation: 0,
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(12),
+  //         ),
+  //       ),
+  //       onPressed: () {}, // 기능 미구현 (UI용)
+  //       child: Text(
+  //         label,
+  //         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //       ),
+  //     ),
+  //   );
+  // }
 }

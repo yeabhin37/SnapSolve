@@ -37,7 +37,7 @@ class HomeTab extends StatelessWidget {
               child: Column(
                 children: [
                   Icon(
-                    Icons.assignment_ind,
+                    Icons.account_circle,
                     size: 80,
                     color: Color(0xFF1E2B58),
                   ),

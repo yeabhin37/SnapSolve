@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, JSON, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -37,5 +37,6 @@ class Problem(Base):
     correct_answer = Column(String, nullable=False)         # 정답 
     folder_id = Column(Integer, ForeignKey("folders.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_wrong_note = Column(Boolean, default=False)          # 오답노트 포함 여부 
     
     folder = relationship("Folder", back_populates="problems")

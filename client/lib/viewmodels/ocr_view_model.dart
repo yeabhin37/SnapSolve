@@ -71,6 +71,7 @@ class OcrViewModel extends ChangeNotifier {
         folderName,
         answer,
         editedProblem,
+        editedChoices,
       );
 
       // 저장 후 초기화
