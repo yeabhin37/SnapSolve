@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../services/api_service.dart';
-import '../../viewmodels/user_view_model.dart';
-import '../../viewmodels/solve_view_model.dart';
-import '../../models/problem_model.dart';
-import '../camera/ocr_preview_screen.dart';
+import '../services/api_service.dart';
+import '../viewmodels/user_view_model.dart';
+import '../viewmodels/solve_view_model.dart';
+import '../models/problem_model.dart';
+import 'ocr_preview_screen.dart';
 
 class SolveScreen extends StatefulWidget {
   final String folderName;

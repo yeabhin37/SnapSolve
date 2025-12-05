@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/user_view_model.dart';
 import '../viewmodels/folder_view_model.dart';
-import 'camera/ocr_preview_screen.dart';
-import 'problem/solve_screen.dart';
+import 'ocr_preview_screen.dart';
+import 'solve_screen.dart';
 import 'statistics_screen.dart';
 
 class HomeTab extends StatefulWidget {
