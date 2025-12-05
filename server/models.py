@@ -14,7 +14,11 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
+    
+    # [추가] 통계용 컬럼 (기본값 0)
+    total_solved = Column(Integer, default=0)  # 총 푼 횟수
+    total_correct = Column(Integer, default=0) # 총 맞힌 횟수
+    
     folders = relationship("Folder", back_populates="owner")
 
 class Folder(Base):

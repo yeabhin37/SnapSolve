@@ -98,6 +98,18 @@ def login_user(request: schemas.UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="로그인 실패")
     return {"message": "로그인 성공", "username": user.username}
 
+@app.put("/user/stats")
+def update_user_stats(request: schemas.UserStatsUpdate, db: Session = Depends(get_db)):
+    user = get_user_by_name(db, request.username)
+    if not user: raise HTTPException(status_code=404, detail="사용자 없음")
+    
+    # 누적 합산
+    user.total_solved += request.solved_count
+    user.total_correct += request.correct_count
+    
+    db.commit()
+    return {"message": "통계 업데이트 완료"}
+
 # ------ Folders ------
 # 폴더 목록 조회 (GET)
 @app.get("/folders")
@@ -110,6 +122,10 @@ def get_folders(username: str = Query(...), db: Session = Depends(get_db)):
         for p in f.problems:
             if p.is_wrong_note:
                 total_wrong_count += 1
+    
+    accuracy = 0
+    if user.total_solved > 0:
+        accuracy = int((user.total_correct / user.total_solved) * 100)
 
     return {
         "folders": [
@@ -120,7 +136,8 @@ def get_folders(username: str = Query(...), db: Session = Depends(get_db)):
                 "problem_count": len(f.problems)
             } for f in user.folders
         ],
-        "wrong_note_count": total_wrong_count
+        "wrong_note_count": total_wrong_count,
+        "accuracy": accuracy
     }
 
 # 폴더 생성 (POST)

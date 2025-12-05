@@ -10,6 +10,8 @@ class FolderViewModel extends ChangeNotifier {
 
   int _wrongNoteCount = 0;
   int get wrongNoteCount => _wrongNoteCount;
+  int _accuracy = 0;
+  int get accuracy => _accuracy;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -20,8 +22,10 @@ class FolderViewModel extends ChangeNotifier {
     notifyListeners(); // 로딩 시작 알림
 
     final result = await _api.getFolders(username);
+
     _folders = result['folders'];
     _wrongNoteCount = result['wrongCount'];
+    _accuracy = result['accuracy'];
 
     _isLoading = false;
     notifyListeners(); // 로딩 끝, 화면 갱신

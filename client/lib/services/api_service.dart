@@ -43,6 +43,28 @@ class ApiService {
     }
   }
 
+  // 1-3. 학습률 통계 업데이트
+  Future<void> updateUserStats(
+    String username,
+    int solvedCount,
+    int correctCount,
+  ) async {
+    final url = Uri.parse('${Constants.baseUrl}/user/stats');
+    try {
+      await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'solved_count': solvedCount,
+          'correct_count': correctCount,
+        }),
+      );
+    } catch (e) {
+      print('통계 업데이트 오류: $e');
+    }
+  }
+
   // 2. 폴더 목록 조회
   Future<Map<String, dynamic>> getFolders(String username) async {
     final url = Uri.parse('${Constants.baseUrl}/folders?username=$username');
@@ -54,13 +76,18 @@ class ApiService {
         final list = data['folders'] as List;
         final folders = list.map((e) => Folder.fromJson(e)).toList();
         final wrongCount = data['wrong_note_count'] ?? 0;
+        final accuracy = data['accuracy'] ?? 0;
 
-        return {'folders': folders, 'wrongCount': wrongCount};
+        return {
+          'folders': folders,
+          'wrongCount': wrongCount,
+          'accuracy': accuracy,
+        };
       }
     } catch (e) {
       print('폴더 조회 오류: $e');
     }
-    return {'folders': <Folder>[], 'wrongCount': 0};
+    return {'folders': <Folder>[], 'wrongCount': 0, 'accuracy': 0};
   }
 
   // 3. 폴더 생성
@@ -81,7 +108,6 @@ class ApiService {
         }),
       );
       return response.statusCode == 200 || response.statusCode == 201;
-      ;
     } catch (e) {
       return false;
     }

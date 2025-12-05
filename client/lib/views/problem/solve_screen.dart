@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../services/api_service.dart';
 import '../../viewmodels/user_view_model.dart';
 import '../../viewmodels/solve_view_model.dart';
 import '../../models/problem_model.dart';
@@ -27,6 +28,7 @@ class _SolveScreenState extends State<SolveScreen> {
   // 상태 관리 변수들
   int _currentProblemIndex = 0;
   bool _isFinished = false; // 모든 문제 풀이 완료 여부
+  bool _isStatsUpdated = false; // 통계 전송 여부 확인용
 
   // 사용자가 입력한 답 (문제ID : 입력값)
   final Map<String, String> _userAnswers = {};
@@ -646,6 +648,18 @@ class _SolveScreenState extends State<SolveScreen> {
       } else {
         wrongProblemIds.add(problem.id);
       }
+    }
+
+    // 결과 화면이 처음 뜰 때만 서버로 통계 전송 (한 번만 실행)
+    if (!_isStatsUpdated) {
+      _isStatsUpdated = true; // 플래그 잠금
+
+      // 화면 그리기 끝난 직후 비동기로 실행
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final username = context.read<UserViewModel>().username;
+        // API 호출 (전체 문제 수, 맞힌 문제 수)
+        ApiService().updateUserStats(username, problems.length, correctCount);
+      });
     }
 
     final score = problems.isEmpty

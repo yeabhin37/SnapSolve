@@ -26,6 +26,8 @@ class _HomeTabState extends State<HomeTab> {
   Widget build(BuildContext context) {
     final folderVM = context.watch<FolderViewModel>();
     final folderCount = folderVM.folders.length;
+    final accuracy = folderVM.accuracy;
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -127,7 +129,7 @@ class _HomeTabState extends State<HomeTab> {
                 const SizedBox(width: 15),
                 _buildDashboardCard(
                   "정답률",
-                  "82%",
+                  "$accuracy%",
                   Icons.check_circle_outline,
                   Colors.green,
                 ),

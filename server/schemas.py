@@ -10,6 +10,11 @@ class UserLogin(BaseModel):
     username: str
     password: str
     
+class UserStatsUpdate(BaseModel):
+    username: str
+    solved_count: int
+    correct_count: int
+
 # ------ Folder ------
 class FolderCreate(BaseModel):
     username: str
