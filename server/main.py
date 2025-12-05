@@ -105,14 +105,23 @@ def get_folders(username: str = Query(...), db: Session = Depends(get_db)):
     user = get_user_by_name(db, username)
     if not user: raise HTTPException(status_code=404, detail="사용자 없음")
     
-    return {"folders": [
-        {
-            "id": f.id,
-            "name": f.name, 
-            "color": f.color, 
-            "problem_count": len(f.problems)
-        } for f in user.folders
-    ]}
+    total_wrong_count = 0
+    for f in user.folders:
+        for p in f.problems:
+            if p.is_wrong_note:
+                total_wrong_count += 1
+
+    return {
+        "folders": [
+            {
+                "id": f.id,
+                "name": f.name, 
+                "color": f.color, 
+                "problem_count": len(f.problems)
+            } for f in user.folders
+        ],
+        "wrong_note_count": total_wrong_count
+    }
 
 # 폴더 생성 (POST)
 @app.post("/folders", status_code=201)
@@ -197,7 +206,8 @@ def save_problem(request: schemas.SaveProblemRequest, db: Session = Depends(get_
         problem_text=final_text,
         choices=final_choices,
         correct_answer=request.correct_answer,
-        folder_id=folder.id
+        folder_id=folder.id,
+        memo=request.memo
     )
     db.add(new_prob)
     db.commit()
@@ -215,7 +225,8 @@ def get_problems(folder_id: int = Query(...), db: Session = Depends(get_db)):
             "problem": p.problem_text,
             "choices": p.choices,
             "answer": p.correct_answer,
-            "is_wrong_note": p.is_wrong_note
+            "is_wrong_note": p.is_wrong_note,
+            "memo": p.memo
         }
     return {"problems": problems}
 

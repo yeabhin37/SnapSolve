@@ -34,6 +34,7 @@ class SaveProblemRequest(BaseModel):
     correct_answer: str
     problem_text: Optional[str] = None
     choices: Optional[List[str]] = None
+    memo: Optional[str] = None 
 
 class UpdateProblemRequest(BaseModel):
     problem_text: Optional[str] = None

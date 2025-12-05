@@ -38,5 +38,6 @@ class Problem(Base):
     folder_id = Column(Integer, ForeignKey("folders.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_wrong_note = Column(Boolean, default=False)          # 오답노트 포함 여부 
+    memo = Column(Text, nullable=True)
     
     folder = relationship("Folder", back_populates="problems")

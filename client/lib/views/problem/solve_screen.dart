@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/user_view_model.dart';
 import '../../viewmodels/solve_view_model.dart';
-import '../../viewmodels/ocr_view_model.dart';
 import '../../models/problem_model.dart';
 import '../camera/ocr_preview_screen.dart';
 
@@ -457,22 +455,61 @@ class _SolveScreenState extends State<SolveScreen> {
           // 정답 해설 (체크 후에만 보임)
           if (_isCurrentAnswerChecked)
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(15),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.grey.shade300),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, size: 20, color: Colors.grey),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      "정답: ${problem.correctAnswer}",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                  // 정답 표시
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        size: 20,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          "정답: ${problem.correctAnswer}",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
+
+                  // 메모 표시
+                  // 2. [추가] 메모 표시 (메모가 있을 때만)
+                  if (problem.memo != null && problem.memo!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Divider(color: Colors.grey), // 구분선
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.note_add,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          "메모",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            // color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 4),
+                    Text(problem.memo!, style: const TextStyle(fontSize: 14)),
+                  ],
                 ],
               ),
             ),

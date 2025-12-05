@@ -56,6 +56,7 @@ class OcrViewModel extends ChangeNotifier {
     String answer,
     String editedProblem,
     List<String> editedChoices,
+    String? memo,
   ) async {
     if (_tempId == null) return false;
 
@@ -72,6 +73,7 @@ class OcrViewModel extends ChangeNotifier {
         answer,
         editedProblem,
         editedChoices,
+        memo,
       );
 
       // 저장 후 초기화

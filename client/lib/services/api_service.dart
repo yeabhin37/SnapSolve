@@ -44,7 +44,7 @@ class ApiService {
   }
 
   // 2. 폴더 목록 조회
-  Future<List<Folder>> getFolders(String username) async {
+  Future<Map<String, dynamic>> getFolders(String username) async {
     final url = Uri.parse('${Constants.baseUrl}/folders?username=$username');
     try {
       final response = await http.get(url); // GET 방식
@@ -52,12 +52,15 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final list = data['folders'] as List;
-        return list.map((e) => Folder.fromJson(e)).toList();
+        final folders = list.map((e) => Folder.fromJson(e)).toList();
+        final wrongCount = data['wrong_note_count'] ?? 0;
+
+        return {'folders': folders, 'wrongCount': wrongCount};
       }
     } catch (e) {
       print('폴더 조회 오류: $e');
     }
-    return [];
+    return {'folders': <Folder>[], 'wrongCount': 0};
   }
 
   // 3. 폴더 생성
@@ -77,7 +80,8 @@ class ApiService {
           'color': colorCode,
         }),
       );
-      return response.statusCode == 201;
+      return response.statusCode == 200 || response.statusCode == 201;
+      ;
     } catch (e) {
       return false;
     }
@@ -149,6 +153,7 @@ class ApiService {
     String answer,
     String? editedProblemText,
     List<String>? editedChoices,
+    String? memo,
   ) async {
     final url = Uri.parse('${Constants.baseUrl}/problems');
     final response = await http.post(
@@ -161,6 +166,7 @@ class ApiService {
         'correct_answer': answer,
         'problem_text': editedProblemText,
         'choices': editedChoices,
+        'memo': memo,
       }),
     );
 

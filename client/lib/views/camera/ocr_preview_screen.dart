@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,13 +17,20 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   final TextEditingController _problemController = TextEditingController();
   final TextEditingController _answerController = TextEditingController();
   final TextEditingController _memoController = TextEditingController();
+  final List<Color> _folderColors = const [
+    Color(0xFF1E2B58), // 네이비
+    Color(0xFF2EBA9F), // 민트
+    Color(0xFFE57373), // 코랄
+    Color(0xFF64B5F6), // 블루
+    Color(0xFFFBC02D), // 옐로우
+    Color(0xFF546E7A), // 그레이
+  ];
 
   // 선지들을 관리할 컨트롤러 리스트
   List<TextEditingController> _choiceControllers = [];
 
   // 데이터가 초기화되었는지 확인하는 플래그
   bool _isDataLoaded = false;
-  String? _selectedFolder; // 저장할 폴더
   int? _selectedFolderId;
 
   @override
@@ -222,6 +228,11 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     // 폴더 자동 선택
     if (_selectedFolderId == null && folderVM.folders.isNotEmpty) {
       _selectedFolderId = folderVM.folders[0].id;
+    } else if (_selectedFolderId != null && folderVM.folders.isNotEmpty) {
+      final exists = folderVM.folders.any((f) => f.id == _selectedFolderId);
+      if (!exists) {
+        _selectedFolderId = folderVM.folders[0].id;
+      }
     }
 
     return Scaffold(
@@ -254,7 +265,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   ),
                   const SizedBox(height: 5),
                   const Text(
-                    "스캔한 문제의 세부 정보를 입력하세요.",
+                    "스캔한 문제를 수정하거나 세부 정보를 입력하세요.",
                     style: TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 30),
@@ -262,7 +273,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   // 1. 문제 이름 (텍스트)
                   const Text(
                     "문제 지문",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   _buildGrayInputContainer(
@@ -283,7 +294,10 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   if (_choiceControllers.isNotEmpty) ...[
                     const Text(
                       "선지 목록",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -340,7 +354,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   // 2. 문제 정답
                   const Text(
                     "정답",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   _buildGrayInputContainer(
@@ -350,6 +364,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: "예: 3",
+                        hintStyle: TextStyle(color: Colors.grey),
                         contentPadding: EdgeInsets.all(10),
                         // labelText: "문제 정답",
                         // floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -361,39 +376,105 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   // 3. 저장 폴더
                   const Text(
                     "저장 폴더",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
-                  _buildGrayInputContainer(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                          // labelText: "저장 폴더",
-                          // floatingLabelBehavior: FloatingLabelBehavior.always,
-                          // contentPadding: EdgeInsets.zero,
+                  Row(
+                    children: [
+                      // 드롭다운 (왼쪽)
+                      Expanded(
+                        child: _buildGrayInputContainer(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButtonFormField<int>(
+                              key: ValueKey(_selectedFolderId),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(10),
+                              ),
+                              value: _selectedFolderId,
+                              isExpanded: true,
+                              hint: const Text(
+                                "폴더 선택",
+                                style: TextStyle(fontSize: 14),
+                              ), // 힌트 텍스트 추가
+                              items: folderVM.folders.map((folder) {
+                                return DropdownMenuItem(
+                                  value: folder.id,
+                                  child: Text(
+                                    folder.name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                setState(() => _selectedFolderId = val);
+                              },
+                            ),
+                          ),
                         ),
-                        value: _selectedFolderId,
-                        isExpanded: true,
-                        items: folderVM.folders.map((folder) {
-                          return DropdownMenuItem(
-                            value: folder.id,
-                            child: Text(folder.name),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setState(() => _selectedFolderId = val);
-                        },
                       ),
-                    ),
+
+                      const SizedBox(width: 10),
+
+                      // 폴더 추가 버튼 (오른쪽)
+                      SizedBox(
+                        height: 50, // 높이를 드롭다운 박스와 맞춤
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E2B58),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 15),
+                          ),
+                          onPressed: () => _showAddFolderDialog(context),
+                          child: const Text(
+                            "폴더 추가",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
+                  // const Text(
+                  //   "저장 폴더",
+                  //   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  // ),
+                  // const SizedBox(height: 8),
+                  // _buildGrayInputContainer(
+                  //   child: DropdownButtonHideUnderline(
+                  //     child: DropdownButtonFormField<int>(
+                  //       decoration: const InputDecoration(
+                  //         border: InputBorder.none,
+                  //         contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                  //         // labelText: "저장 폴더",
+                  //         // floatingLabelBehavior: FloatingLabelBehavior.always,
+                  //         // contentPadding: EdgeInsets.zero,
+                  //       ),
+                  //       value: _selectedFolderId,
+                  //       isExpanded: true,
+                  //       items: folderVM.folders.map((folder) {
+                  //         return DropdownMenuItem(
+                  //           value: folder.id,
+                  //           child: Text(folder.name),
+                  //         );
+                  //       }).toList(),
+                  //       onChanged: (val) {
+                  //         setState(() => _selectedFolderId = val);
+                  //       },
+                  //     ),
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 20),
 
                   // 4. 메모
                   const Text(
                     "메모",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   _buildGrayInputContainer(
@@ -407,6 +488,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         hintText: "메모를 입력하세요",
+                        hintStyle: TextStyle(color: Colors.grey),
                         contentPadding: EdgeInsets.all(10),
                         // labelText: "메모",
                         // floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -499,6 +581,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                           _answerController.text,
                           _problemController.text, // 수정된 문제 텍스트
                           finalChoices, // 수정된 선지 리스트 (참고: API가 지원해야 저장됨)
+                          _memoController.text,
                           // []
                         );
 
@@ -541,6 +624,148 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
       ),
       // child: Center(child: child),
       child: child,
+    );
+  }
+
+  // 폴더 추가 팝업 함수
+  void _showAddFolderDialog(BuildContext context) {
+    final controller = TextEditingController();
+    int selectedColorIndex = 0; // 기본 색상 인덱스
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              title: const Text(
+                '새 폴더 만들기',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "이름을 입력하세요.",
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: '예: 수학, 영어',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Color(0xFF1E2B58),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "폴더 색상 선택",
+                    style: TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 색상 선택 원들
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(_folderColors.length, (index) {
+                      final color = _folderColors[index];
+                      final isSelected = index == selectedColorIndex;
+                      return GestureDetector(
+                        onTap: () {
+                          setStateDialog(() {
+                            selectedColorIndex = index;
+                          });
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: isSelected
+                                ? Border.all(color: Colors.black, width: 2)
+                                : null,
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 20,
+                                )
+                              : null,
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('취소', style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final name = controller.text.trim();
+                    if (name.isNotEmpty) {
+                      final userVM = context.read<UserViewModel>();
+                      final folderVM = context.read<FolderViewModel>();
+
+                      // 선택된 색상 코드로 변환
+                      final colorCode =
+                          "0x${_folderColors[selectedColorIndex].value.toRadixString(16).toUpperCase()}";
+
+                      // 폴더 생성 요청
+                      final success = await folderVM.addFolder(
+                        userVM.username,
+                        name,
+                        colorCode,
+                      );
+
+                      if (success && mounted) {
+                        Navigator.pop(context); // 팝업 닫기
+
+                        // [중요] 생성된 폴더를 드롭다운에서 바로 선택하도록 설정
+                        if (folderVM.folders.isNotEmpty) {
+                          setState(() {
+                            _selectedFolderId = folderVM.folders.last.id;
+                          });
+                        }
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("'$name' 폴더가 생성되었습니다.")),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text(
+                    '생성',
+                    style: TextStyle(
+                      color: Color(0xFF1E2B58),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

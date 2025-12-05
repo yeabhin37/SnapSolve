@@ -72,18 +72,25 @@ class _WorkbookTabState extends State<WorkbookTab> {
                               MaterialPageRoute(
                                 builder: (_) => const SolveScreen(
                                   folderName: "오답노트",
+                                  folderId: -1,
                                   isWrongNoteMode: true,
                                 ),
                               ),
-                            );
+                            ).then((_) {
+                              final username = context
+                                  .read<UserViewModel>()
+                                  .username;
+                              context.read<FolderViewModel>().loadFolders(
+                                username,
+                              );
+                            });
                           },
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 15),
                             padding: const EdgeInsets.all(15),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF0F0), // 연한 붉은색 배경
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.red.shade100),
                             ),
                             child: Row(
                               children: [
@@ -91,16 +98,16 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                   width: 50,
                                   height: 50,
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent, // 빨간 아이콘 배경
+                                    color: Color(0xFF009688),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Icon(
-                                    Icons.bookmark,
+                                    Icons.edit,
                                     color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(width: 15),
-                                const Column(
+                                Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
@@ -108,11 +115,10 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
-                                        color: Colors.redAccent,
                                       ),
                                     ),
                                     Text(
-                                      "틀린 문제를 복습하세요",
+                                      "${folderVM.wrongNoteCount}문제",
                                       style: TextStyle(
                                         color: Colors.grey,
                                         fontSize: 12,
@@ -143,7 +149,14 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                 folderId: folder.id,
                               ),
                             ),
-                          );
+                          ).then((_) {
+                            final username = context
+                                .read<UserViewModel>()
+                                .username;
+                            context.read<FolderViewModel>().loadFolders(
+                              username,
+                            );
+                          });
                         },
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 15),

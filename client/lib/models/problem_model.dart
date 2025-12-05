@@ -2,7 +2,8 @@ class Problem {
   final String id;
   final String problemText;
   final List<String> choices;
-  final String? correctAnswer; // 풀이 전에는 정답을 모를 수도 있음
+  final String? correctAnswer;
+  final String? memo;
   bool isWrongNote;
 
   Problem({
@@ -11,6 +12,7 @@ class Problem {
     required this.choices,
     this.correctAnswer,
     this.isWrongNote = false,
+    this.memo,
   });
 
   // JSON 데이터를 Dart 객체로 변환
@@ -24,6 +26,7 @@ class Problem {
           : [],
       correctAnswer: json['answer'] ?? json['correct_answer'],
       isWrongNote: json['is_wrong_note'] ?? false,
+      memo: json['memo'],
     );
   }
 }

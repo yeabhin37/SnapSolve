@@ -1,11 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../viewmodels/user_view_model.dart';
+import '../viewmodels/folder_view_model.dart';
 import 'camera/ocr_preview_screen.dart';
+import 'problem/solve_screen.dart';
 
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
   @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final username = context.read<UserViewModel>().username;
+      context.read<FolderViewModel>().loadFolders(username);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final folderVM = context.watch<FolderViewModel>();
+    final folderCount = folderVM.folders.length;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -27,12 +47,12 @@ class HomeTab extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. 일러스트 및 메인 텍스트
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Center(
               child: Column(
                 children: [
@@ -41,7 +61,7 @@ class HomeTab extends StatelessWidget {
                     size: 80,
                     color: Color(0xFF1E2B58),
                   ),
-                  SizedBox(height: 15),
+                  SizedBox(height: 5),
                   Text(
                     "나만의 맞춤형 디지털 학습지",
                     style: TextStyle(
@@ -58,7 +78,7 @@ class HomeTab extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 10),
 
             // 2. 문제집 스캔하기 버튼 (메인 액션)
             SizedBox(
@@ -100,7 +120,7 @@ class HomeTab extends StatelessWidget {
               children: [
                 _buildDashboardCard(
                   "내 문제집",
-                  "3권",
+                  "${folderCount}권",
                   Icons.library_books,
                   Colors.teal,
                 ),
@@ -125,11 +145,26 @@ class HomeTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 15),
-            _buildShortcutCard(
-              "오답노트",
-              "틀린 문제를 다시 풀어보세요",
-              Icons.edit,
-              Colors.teal,
+            InkWell(
+              onTap: () {
+                // 오답노트 모드로 이동 (folderId: -1, isWrongNoteMode: true)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SolveScreen(
+                      folderName: "오답노트",
+                      folderId: -1,
+                      isWrongNoteMode: true,
+                    ),
+                  ),
+                );
+              },
+              child: _buildShortcutCard(
+                "오답노트",
+                "틀린 문제를 다시 풀어보세요",
+                Icons.edit, // [수정] 연필 아이콘
+                const Color(0xFF009688), // (홈 화면 디자인상 초록색 유지, 원하면 빨강으로 변경 가능)
+              ),
             ),
             const SizedBox(height: 10),
             _buildShortcutCard(
