@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:fl_chart/fl_chart.dart'; // 차트 라이브러리
 import '../../viewmodels/folder_view_model.dart';
 import '../../viewmodels/user_view_model.dart';
 import '../../services/api_service.dart';
@@ -13,17 +13,17 @@ class StatisticsScreen extends StatefulWidget {
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
-  // 탭 선택 상태 (UI용 더미)
+  // 탭 선택 상태
   int _selectedTabIndex = 0; // 0: 주간, 1: 월간, 2: 전체
 
-  // 그래프용 데이터
+  // 그래프용 데이터 (날짜, 점수)
   List<Map<String, dynamic>> _historyData = [];
   bool _isHistoryLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // 데이터 최신화
+    // 데이터 최신화 (폴더 정보 + 시험 이력)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final username = context.read<UserViewModel>().username;
       context.read<FolderViewModel>().loadFolders(username);
@@ -52,7 +52,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final double accuracyRate = accuracy / 100.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // 배경색 (회색톤)
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text("학습 통계"),
         backgroundColor: Colors.transparent,
@@ -63,7 +63,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // 1. 상단 탭 (주간/월간/전체) - 기능은 없지만 디자인 구현
+            // 1. 상단 탭 (주간/월간/전체)
             _buildSegmentedControl(),
             const SizedBox(height: 20),
 
@@ -122,7 +122,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   )
                 : LineChart(
                     LineChartData(
-                      // [수정] 가로선(Grid) 추가하여 점수 보기 편하게 함
+                      // 그리드 설정
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false, // 세로선은 숨김
@@ -135,21 +135,21 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         },
                       ),
                       titlesData: FlTitlesData(
-                        // [수정] X축(날짜) 숨김
+                        // X축(날짜) 숨김
                         bottomTitles: AxisTitles(
                           sideTitles: SideTitles(showTitles: false),
                         ),
-                        // [수정] Y축(점수) 표시
+                        // Y축(점수) 표시
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
                             interval: 20, // 0, 20, 40... 단위
-                            reservedSize: 35, // 글자 공간 확보
+                            reservedSize: 45, // 글자 공간 확보
                             getTitlesWidget: (value, meta) {
                               return Padding(
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: Text(
-                                  value.toInt().toString(),
+                                  "${value.toInt()}%",
                                   style: const TextStyle(
                                     color: Colors.grey,
                                     fontSize: 12,
@@ -172,7 +172,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       minX: 0,
                       maxX: (_historyData.length - 1).toDouble(),
                       minY: 0,
-                      maxY: 100, // 100점보다 살짝 높게 잡아서 잘림 방지
+                      maxY: 100,
+                      // 라인 데이터 설정
                       lineBarsData: [
                         LineChartBarData(
                           spots: _historyData.asMap().entries.map((e) {
@@ -181,7 +182,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                               (e.value['score'] as int).toDouble(),
                             );
                           }).toList(),
-                          isCurved: true,
+                          isCurved: true, // 곡선 효과
                           color: const Color(0xFF1E2B58),
                           barWidth: 3,
                           isStrokeCapRound: true,
@@ -209,6 +210,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  // 상단 탭 컨트롤 UI (주간/월간/전체)
   Widget _buildSegmentedControl() {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -258,6 +260,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  // 전체 정답률 원형 그래프 카드
   Widget _buildOverallAccuracyCard(int accuracy, double rate) {
     return Container(
       padding: const EdgeInsets.all(25),

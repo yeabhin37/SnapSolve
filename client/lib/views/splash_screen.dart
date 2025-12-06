@@ -11,6 +11,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  // 입력 필드 컨트롤러
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _pwController = TextEditingController();
 
@@ -60,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 30),
 
-              // 버튼 영역
+              // 로딩 중이면 인디케이터, 아니면 버튼 표시
               if (userViewModel.isLoading)
                 const CircularProgressIndicator()
               else
@@ -81,8 +82,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
                           if (id.isEmpty || pw.isEmpty) return;
 
+                          // 로그인 시도
                           final success = await userViewModel.login(id, pw);
                           if (success && context.mounted) {
+                            // 성공 시 메인 화면으로 이동 (뒤로가기 불가 처리)
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -105,7 +108,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // 회원가입 버튼 (텍스트 버튼)
+                    // 회원가입 버튼
                     TextButton(
                       onPressed: () async {
                         final id = _idController.text.trim();
@@ -118,6 +121,7 @@ class _SplashScreenState extends State<SplashScreen> {
                           return;
                         }
 
+                        // 회원가입 시도
                         final success = await userViewModel.register(id, pw);
                         if (success && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(

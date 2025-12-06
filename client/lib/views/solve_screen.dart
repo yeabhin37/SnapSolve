@@ -5,11 +5,12 @@ import '../viewmodels/user_view_model.dart';
 import '../viewmodels/solve_view_model.dart';
 import '../models/problem_model.dart';
 import 'ocr_preview_screen.dart';
+import '../widgets/problem_card.dart';
 
 class SolveScreen extends StatefulWidget {
   final String folderName;
   final int folderId;
-  final bool isWrongNoteMode;
+  final bool isWrongNoteMode; // 오답노트 모드 여부
 
   const SolveScreen({
     super.key,
@@ -27,19 +28,17 @@ class _SolveScreenState extends State<SolveScreen> {
 
   // 상태 관리 변수들
   int _currentProblemIndex = 0;
-  bool _isFinished = false; // 모든 문제 풀이 완료 여부
+  bool _isFinished = false; // 모든 문제 풀이 완료 여부 (결과 화면 표시용)
   bool _isStatsUpdated = false; // 통계 전송 여부 확인용
 
-  // 사용자가 입력한 답 (문제ID : 입력값)
-  final Map<String, String> _userAnswers = {};
-  // 채점 결과 (문제ID : 정답여부)
-  final Map<String, bool> _results = {};
-  // 현재 문제의 정답 확인 여부 (UI 변경용)
-  bool _isCurrentAnswerChecked = false;
+  final Map<String, String> _userAnswers = {}; // 사용자가 입력한 답 (문제ID : 입력값)
+  final Map<String, bool> _results = {}; // 채점 결과 (문제ID : 정답여부)
+  bool _isCurrentAnswerChecked = false; // 현재 문제의 정답 확인 여부 (UI 변경용)
 
   @override
   void initState() {
     super.initState();
+    // 화면 로드 시 문제 목록 가져오기
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final username = context.read<UserViewModel>().username;
       final solveVM = context.read<SolveViewModel>();
@@ -49,7 +48,6 @@ class _SolveScreenState extends State<SolveScreen> {
       } else {
         solveVM.loadProblems(widget.folderId);
       }
-      // context.read<SolveViewModel>().loadProblems(username, widget.folderName);
     });
   }
 
@@ -67,13 +65,13 @@ class _SolveScreenState extends State<SolveScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.folderName), // 폴더명 (예: ADP 필기)
+        title: Text(widget.folderName), // 폴더명
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // 문제 풀 때 별표 체크 (오답노트 추가/제거)
+          // 현재 문제에 대한 오답노트(별표) 토글 버튼
           if (!_isFinished && currentProblem != null)
             IconButton(
               icon: Icon(
@@ -95,7 +93,7 @@ class _SolveScreenState extends State<SolveScreen> {
               child: CircularProgressIndicator(color: Color(0xFF1E2B58)),
             )
           : isEmpty
-          ? _buildEmptyView()
+          ? _buildEmptyView() // 문제 없음 화면
           : _isFinished
           ? _buildScoreView(solveVM.problems) // 결과 화면
           : Column(
@@ -142,7 +140,19 @@ class _SolveScreenState extends State<SolveScreen> {
                       });
                     },
                     itemBuilder: (context, index) {
-                      return _buildProblemPage(solveVM.problems[index]);
+                      return ProblemCard(
+                        problem: solveVM.problems[index],
+                        userAnswers: _userAnswers,
+                        isAnswerChecked: _isCurrentAnswerChecked,
+                        onAnswerSelected: (problemId, answer) {
+                          // 정답 확인 전일 때만 답 선택 가능
+                          if (!_isCurrentAnswerChecked) {
+                            setState(() {
+                              _userAnswers[problemId] = answer;
+                            });
+                          }
+                        },
+                      );
                     },
                   ),
                 ),
@@ -154,7 +164,7 @@ class _SolveScreenState extends State<SolveScreen> {
           ? null
           : _buildBottomButton(solveVM),
 
-      // 4. 빈 화면일 때만 카메라 플로팅 버튼 표시 (디자인 우측 하단 버튼)
+      // 4. 빈 화면일 때만 카메라 플로팅 버튼 표시
       floatingActionButton: isEmpty
           ? FloatingActionButton(
               backgroundColor: const Color(0xFF1E2B58),
@@ -172,113 +182,7 @@ class _SolveScreenState extends State<SolveScreen> {
     );
   }
 
-  // void _showScanBottomSheet(BuildContext context) {
-  //   showModalBottomSheet(
-  //     context: context,
-  //     backgroundColor: Colors.transparent, // 뒤에 둥근 모서리 보이게 투명 처리
-  //     builder: (context) {
-  //       return Container(
-  //         padding: const EdgeInsets.all(25),
-  //         decoration: const BoxDecoration(
-  //           color: Colors.white,
-  //           borderRadius: BorderRadius.only(
-  //             topLeft: Radius.circular(25),
-  //             topRight: Radius.circular(25),
-  //           ),
-  //         ),
-  //         child: Column(
-  //           mainAxisSize: MainAxisSize.min, // 내용물 크기만큼만 높이 차지
-  //           children: [
-  //             // 상단 핸들 (회색 바)
-  //             Container(
-  //               width: 40,
-  //               height: 4,
-  //               decoration: BoxDecoration(
-  //                 color: Colors.grey.shade300,
-  //                 borderRadius: BorderRadius.circular(2),
-  //               ),
-  //             ),
-  //             const SizedBox(height: 20),
-
-  //             // 타이틀
-  //             const Text(
-  //               "문제집 스캔하기",
-  //               style: TextStyle(
-  //                 fontSize: 20,
-  //                 fontWeight: FontWeight.bold,
-  //                 color: Color(0xFF1E2B58),
-  //               ),
-  //             ),
-  //             const SizedBox(height: 30),
-
-  //             // 1. 카메라로 스캔 버튼
-  //             SizedBox(
-  //               width: double.infinity,
-  //               height: 55,
-  //               child: ElevatedButton(
-  //                 style: ElevatedButton.styleFrom(
-  //                   backgroundColor: const Color(0xFF1E2B58), // 네이비
-  //                   shape: RoundedRectangleBorder(
-  //                     borderRadius: BorderRadius.circular(12),
-  //                   ),
-  //                 ),
-  //                 onPressed: () {
-  //                   Navigator.pop(context); // 시트 닫기
-  //                   _processScan(ImageSource.camera); // 촬영 시작
-  //                 },
-  //                 child: const Text(
-  //                   "카메라로 스캔",
-  //                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  //                 ),
-  //               ),
-  //             ),
-  //             const SizedBox(height: 15),
-
-  //             // 2. 갤러리에서 선택 버튼
-  //             SizedBox(
-  //               width: double.infinity,
-  //               height: 55,
-  //               child: ElevatedButton(
-  //                 style: ElevatedButton.styleFrom(
-  //                   backgroundColor: const Color(0xFFEBEFF5), // 연한 회색/보라
-  //                   foregroundColor: Colors.black87, // 글자색 검정
-  //                   elevation: 0,
-  //                   shape: RoundedRectangleBorder(
-  //                     borderRadius: BorderRadius.circular(12),
-  //                   ),
-  //                 ),
-  //                 onPressed: () {
-  //                   Navigator.pop(context); // 시트 닫기
-  //                   _processScan(ImageSource.gallery); // 갤러리 열기
-  //                 },
-  //                 child: const Text(
-  //                   "갤러리에서 선택",
-  //                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  //                 ),
-  //               ),
-  //             ),
-  //             const SizedBox(height: 20),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  // void _processScan(ImageSource source) {
-  //   final userVM = context.read<UserViewModel>();
-  //   final ocrVM = context.read<OcrViewModel>();
-
-  //   // 1. 이미지 피킹 및 OCR 요청 시작
-  //   ocrVM.pickAndScanImage(userVM.username, source);
-
-  //   // 2. 결과 확인 화면으로 이동 (로딩 상태를 보여줌)
-  //   Navigator.push(
-  //     context,
-  //     MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),
-  //   );
-  // }
-
+  // 문제가 없을 때 표시하는 화면
   Widget _buildEmptyView() {
     return Center(
       child: Column(
@@ -320,206 +224,7 @@ class _SolveScreenState extends State<SolveScreen> {
     );
   }
 
-  Widget _buildProblemPage(Problem problem) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 문제 텍스트 박스 (회색 배경)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(25),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEBEFF5), // 연한 회색
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              problem.problemText,
-              style: const TextStyle(
-                fontSize: 16,
-                height: 1.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1E2B58),
-              ),
-            ),
-          ),
-          const SizedBox(height: 30),
-
-          // 선지 목록
-          if (problem.choices.isNotEmpty)
-            ...problem.choices.asMap().entries.map((entry) {
-              final idx = entry.key + 1; // 1, 2, 3...
-              final text = entry.value;
-              final isSelected =
-                  _userAnswers[problem.id] == idx.toString(); // 선택 상태 확인
-
-              // 정답 체크 후 스타일링
-              Color borderColor = Colors.transparent;
-              Color bgColor = Colors.transparent;
-              Color iconColor = Colors.grey.shade300;
-              IconData iconData = Icons.check_box_outline_blank;
-
-              if (_isCurrentAnswerChecked) {
-                // 정답 확인 모드
-                final isAnswer = problem.correctAnswer == idx.toString();
-                if (isAnswer) {
-                  // 실제 정답인 선지 (초록색 강조)
-                  borderColor = const Color(0xFF2EBA9F);
-                  bgColor = const Color(0xFF2EBA9F).withOpacity(0.1);
-                  iconColor = const Color(0xFF2EBA9F);
-                  iconData = Icons.check_box;
-                } else if (isSelected && !isAnswer) {
-                  // 내가 찍었는데 틀린 선지 (빨간색)
-                  borderColor = Colors.red.shade300;
-                  bgColor = Colors.red.withOpacity(0.05);
-                  iconColor = Colors.red;
-                  iconData = Icons.close; // x 표시
-                }
-              } else {
-                // 풀이 중 모드
-                if (isSelected) {
-                  borderColor = const Color(0xFF2EBA9F); // 민트
-                  bgColor = const Color(0xFF2EBA9F).withOpacity(0.05);
-                  iconColor = const Color(0xFF2EBA9F);
-                  iconData = Icons.check_box;
-                }
-              }
-
-              return GestureDetector(
-                onTap: _isCurrentAnswerChecked
-                    ? null
-                    : () {
-                        setState(() {
-                          _userAnswers[problem.id] = idx.toString();
-                        });
-                      },
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    border: Border.all(
-                      color:
-                          _isCurrentAnswerChecked &&
-                              borderColor == Colors.transparent
-                          ? Colors.transparent
-                          : (isSelected || _isCurrentAnswerChecked
-                                ? borderColor
-                                : Colors.transparent),
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(iconData, color: iconColor, size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          text,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color:
-                                _isCurrentAnswerChecked &&
-                                    problem.correctAnswer == idx.toString()
-                                ? const Color(0xFF2EBA9F)
-                                : Colors.black87,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-
-          // 만약 주관식이라면 (선지 없음)
-          if (problem.choices.isEmpty)
-            TextField(
-              enabled: !_isCurrentAnswerChecked,
-              onChanged: (val) {
-                _userAnswers[problem.id] = val;
-              },
-              decoration: const InputDecoration(
-                labelText: "정답 입력",
-                border: OutlineInputBorder(),
-              ),
-            ),
-
-          const SizedBox(height: 20),
-
-          // 정답 해설 (체크 후에만 보임)
-          if (_isCurrentAnswerChecked)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 정답 표시
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        size: 20,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(
-                          "정답: ${problem.correctAnswer}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // 메모 표시
-                  // 2. [추가] 메모 표시 (메모가 있을 때만)
-                  if (problem.memo != null && problem.memo!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    const Divider(color: Colors.grey), // 구분선
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.note_add,
-                          size: 20,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          "메모",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            // color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 4),
-                    Text(problem.memo!, style: const TextStyle(fontSize: 14)),
-                  ],
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
+  // 하단 '정답 확인' 및 '다음 문제' 버튼
   Widget _buildBottomButton(SolveViewModel solveVM) {
     final currentProblem = solveVM.problems[_currentProblemIndex];
     final isLastPage = _currentProblemIndex == solveVM.problems.length - 1;
@@ -536,7 +241,7 @@ class _SolveScreenState extends State<SolveScreen> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEBEFF5), // 회색
+                    backgroundColor: const Color(0xFFEBEFF5),
                     foregroundColor: Colors.black87,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -576,20 +281,12 @@ class _SolveScreenState extends State<SolveScreen> {
               height: 55,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E2B58), // 네이비
+                  backgroundColor: const Color(0xFF1E2B58),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 onPressed: () {
-                  // if (!_isCurrentAnswerChecked) {
-                  //   // 확인 안 하고 넘어가려 하면 경고 (선택사항)
-                  //   ScaffoldMessenger.of(context).showSnackBar(
-                  //     const SnackBar(content: Text("먼저 정답을 확인해주세요.")),
-                  //   );
-                  //   return;
-                  // }
-
                   if (isLastPage) {
                     setState(() => _isFinished = true); // 결과 화면으로 전환
                   } else {
@@ -614,31 +311,13 @@ class _SolveScreenState extends State<SolveScreen> {
     );
   }
 
+  // 결과 화면 (점수 및 통계)
   Widget _buildScoreView(List<Problem> problems) {
     int correctCount = 0;
 
-    // [ver1] 정답 확인 버튼 누른 것만 카운트
-    // _results.forEach((_, isCorrect) {
-    //   if (isCorrect) correctCount++;
-    // });
-    // final score = (correctCount / problems.length * 100).toInt();
-
-    // [ver2] 전체 문제를 돌면서, 사용자 입력 답과 정답을 비교
-    // for (var problem in problems) {
-    //   final userAnswer = _userAnswers[problem.id];
-    //   // 답을 선택했고, 그 답이 정답과 같으면 정답 처리
-    //   if (userAnswer != null && problem.correctAnswer == userAnswer) {
-    //     correctCount++;
-    //   }
-    // }
-    // final score = problems.isEmpty
-    //     ? 0
-    //     : (correctCount / problems.length * 100).toInt();
-
-    // [ver3] 오답노트 기능 추가
-    // 이번 시험에서 틀린 문제 ID 목록 추출
+    // 이번 시험에서 틀린 문제와 맞힌 문제 ID 분류
     List<String> wrongProblemIds = [];
-    List<String> correctProblemIds = []; // 맞힌 문제
+    List<String> correctProblemIds = [];
 
     for (var problem in problems) {
       final userAnswer = _userAnswers[problem.id];
@@ -661,11 +340,9 @@ class _SolveScreenState extends State<SolveScreen> {
       // 화면 그리기 끝난 직후 비동기로 실행
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final username = context.read<UserViewModel>().username;
-        // API 호출
-        // 통계 업데이트
-        print("📊 통계 전송 시작: $score점"); // 디버깅 용도
+        // 1. 학습 통계 업데이트
         ApiService().updateUserStats(username, problems.length, correctCount);
-        // 점수 히스토리 저장
+        // 2. 점수 히스토리 저장
         ApiService().saveExamScore(username, score);
       });
     }
@@ -756,53 +433,7 @@ class _SolveScreenState extends State<SolveScreen> {
           ),
           const SizedBox(height: 30),
 
-          // // 기능 버튼들
-          // _buildActionButton(
-          //   "틀린 문제 오답 노트에 저장",
-          //   Colors.grey.shade200,
-          //   Colors.black87,
-          // ),
-          // const SizedBox(height: 15),
-          // _buildActionButton(
-          //   "나만의 문제은행에 추가",
-          //   Colors.grey.shade200,
-          //   Colors.black87,
-          // ),
-          // const SizedBox(height: 15),
-
-          // // 다시 풀기 (민트색 강조)
-          // SizedBox(
-          //   width: double.infinity,
-          //   height: 55,
-          //   child: ElevatedButton(
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: const Color(0xFF2EBA9F), // 민트
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(12),
-          //       ),
-          //     ),
-          //     onPressed: () {
-          //       // 초기화 후 다시 시작
-          //       setState(() {
-          //         _currentProblemIndex = 0;
-          //         _isFinished = false;
-          //         _userAnswers.clear();
-          //         _results.clear();
-          //         _isCurrentAnswerChecked = false;
-          //       });
-          //     },
-          //     child: const Text(
-          //       "다시 풀기",
-          //       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          //     ),
-          //   ),
-          // ),
-
-          // const SizedBox(height: 15),
-          // TextButton(
-          //   onPressed: () => Navigator.pop(context), // 뒤로가기
-          //   child: const Text("홈으로 돌아가기", style: TextStyle(color: Colors.grey)),
-          // ),
+          // 틀린 문제 오답 노트에 저장 (일반 모드일 때만 보임)
           if (wrongProblemIds.isNotEmpty && !widget.isWrongNoteMode)
             Padding(
               padding: const EdgeInsets.only(bottom: 15),
@@ -811,7 +442,7 @@ class _SolveScreenState extends State<SolveScreen> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFF0F0), // 연한 빨강
+                    backgroundColor: const Color(0xFFFFF0F0),
                     foregroundColor: Colors.redAccent,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -820,10 +451,7 @@ class _SolveScreenState extends State<SolveScreen> {
                   ),
                   onPressed: () async {
                     final solveVM = context.read<SolveViewModel>();
-                    await solveVM.updateWrongNote(
-                      wrongProblemIds,
-                      true,
-                    ); // true = 추가
+                    await solveVM.updateWrongNote(wrongProblemIds, true);
 
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -843,9 +471,7 @@ class _SolveScreenState extends State<SolveScreen> {
               ),
             ),
 
-          // ------------------------------------------------------------------
-          // [기능] 맞힌 문제 오답 노트에서 삭제 (오답노트 모드일 때만 보임)
-          // ------------------------------------------------------------------
+          // 맞힌 문제 오답 노트에서 삭제 (오답노트 모드일 때만 보임)
           if (correctProblemIds.isNotEmpty && widget.isWrongNoteMode)
             Padding(
               padding: const EdgeInsets.only(bottom: 15),
@@ -854,7 +480,7 @@ class _SolveScreenState extends State<SolveScreen> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE8F5E9), // 연한 초록
+                    backgroundColor: const Color(0xFFE8F5E9),
                     foregroundColor: Colors.green,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -898,6 +524,7 @@ class _SolveScreenState extends State<SolveScreen> {
                 ),
               ),
               onPressed: () {
+                // 상태 초기화 후 다시 시작
                 setState(() {
                   _currentProblemIndex = 0;
                   _isFinished = false;
@@ -921,26 +548,4 @@ class _SolveScreenState extends State<SolveScreen> {
       ),
     );
   }
-
-  // Widget _buildActionButton(String label, Color bgColor, Color textColor) {
-  //   return SizedBox(
-  //     width: double.infinity,
-  //     height: 55,
-  //     child: ElevatedButton(
-  //       style: ElevatedButton.styleFrom(
-  //         backgroundColor: bgColor,
-  //         foregroundColor: textColor,
-  //         elevation: 0,
-  //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(12),
-  //         ),
-  //       ),
-  //       onPressed: () {}, // 기능 미구현 (UI용)
-  //       child: Text(
-  //         label,
-  //         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  //       ),
-  //     ),
-  //   );
-  // }
 }

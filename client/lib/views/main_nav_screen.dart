@@ -19,24 +19,26 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
   // 탭별 화면 정의
   final List<Widget> _screens = [
-    const HomeTab(), // 홈 (대시보드)
-    const WorkbookTab(), // 문제집 (폴더 목록)
-    const SizedBox.shrink(),
-    const Center(child: Text("마이페이지 준비중")), // 마이페이지
+    const HomeTab(), // 0: 홈 (대시보드)
+    const WorkbookTab(), // 1: 문제집 (폴더 관리)
+    const SizedBox.shrink(), // 2: 스캔 (UI 없음, 버튼 클릭 이벤트로 대체)
+    const Center(child: Text("마이페이지 준비중")), // 3: 마이페이지
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // IndexedStack을 사용하여 탭 전환 시 상태 유지
       body: IndexedStack(index: _selectedIndex, children: _screens),
 
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == 2) {
-            // 스캔 탭 클릭 -> 바텀 시트 호출
+            // 가운데 '스캔' 탭 클릭 시 바텀 시트 호출
             _showScanBottomSheet(context);
           } else {
+            // 일반 탭 이동
             setState(() => _selectedIndex = index);
           }
         },
@@ -57,6 +59,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
     );
   }
 
+  // 스캔 방식 선택 모달 (카메라 vs 갤러리)
   void _showScanBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -74,6 +77,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // 핸들 바
               Container(
                 width: 40,
                 height: 4,
@@ -92,6 +96,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 ),
               ),
               const SizedBox(height: 30),
+              // 카메라 버튼
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -113,6 +118,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 ),
               ),
               const SizedBox(height: 15),
+              // 갤러리 버튼
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -143,6 +149,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
     );
   }
 
+  // 스캔 로직 실행 (ViewModel 호출 후 미리보기 화면 이동)
   void _processScan(ImageSource source) {
     // context가 유효한지 확인하고 접근
     if (!mounted) return;
@@ -150,8 +157,10 @@ class _MainNavScreenState extends State<MainNavScreen> {
     final userVM = context.read<UserViewModel>();
     final ocrVM = context.read<OcrViewModel>();
 
+    // OCR 요청 시작
     ocrVM.pickAndScanImage(userVM.username, source);
 
+    // 미리보기 화면으로 이동 (로딩 상태 표시됨)
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const OcrPreviewScreen()),

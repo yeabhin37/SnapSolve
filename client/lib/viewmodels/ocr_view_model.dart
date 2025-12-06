@@ -7,19 +7,22 @@ class OcrViewModel extends ChangeNotifier {
   final ApiService _api = ApiService();
   final ImagePicker _picker = ImagePicker();
 
+  // 이미지 업로드 및 분석 중인지 여부
   bool _isUploading = false;
   bool get isUploading => _isUploading;
 
-  // 서버에서 받은 임시 데이터 (미리보기용)
+  // 서버에서 받은 OCR 분석 결과 (미리보기용 데이터)
+  // 예: { "problem": "...", "choices": [...] }
   Map<String, dynamic>? _ocrResult;
   Map<String, dynamic>? get ocrResult => _ocrResult;
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  String? _tempId; // 저장할 때 필요한 ID
+  // 저장 요청 시 필요한 임시 ID (OCR 요청 시 서버가 발급)
+  String? _tempId;
 
-  // 1. 이미지 선택 및 압축 후 OCR 요청
+  // 1. 이미지 선택(카메라/갤러리) 및 압축 후 OCR 요청
   Future<void> pickAndScanImage(String username, ImageSource source) async {
     try {
       _errorMessage = null;
@@ -31,13 +34,11 @@ class OcrViewModel extends ChangeNotifier {
       _isUploading = true;
       notifyListeners();
 
-      // 1-2. 이미지 압축 (서버 전송 속도 향상)
+      // 1-2. 파일 객체 생성 및 서버 전송
       File imageFile = File(pickedFile.path);
-      // (선택사항: 압축 로직이 복잡하면 일단 원본 전송)
-
-      // 1-3. 서버 전송
       final result = await _api.ocrImage(username, imageFile);
 
+      // 1-3. 결과 수신
       _tempId = result['temp_id'];
       _ocrResult = result['preview']; // { "problem": "...", "choices": [...] }
     } catch (e) {
@@ -49,7 +50,7 @@ class OcrViewModel extends ChangeNotifier {
     }
   }
 
-  // 2. 최종 저장
+  // 2. 최종 문제 저장
   Future<bool> saveProblem(
     String username,
     int folderId,
@@ -60,12 +61,8 @@ class OcrViewModel extends ChangeNotifier {
   ) async {
     if (_tempId == null) return false;
 
-    // (참고) 현재 서버 API는 텍스트 수정을 지원하지 않고, 원본 OCR 결과만 저장하는 구조입니다.
-    // 하지만 일단 Client에서는 수정된 값을 가지고 있다고 가정하고,
-    // 서버가 수정 기능을 지원하게 되면 update API를 호출하거나 save API를 고쳐야 합니다.
-    // *일단 지금은 서버 스펙인 save(temp_id, correct_answer)만 호출합니다.*
-
     try {
+      // 사용자가 수정한 내용과 함께 저장 요청
       await _api.saveProblem(
         username,
         _tempId!,
@@ -76,7 +73,7 @@ class OcrViewModel extends ChangeNotifier {
         memo,
       );
 
-      // 저장 후 초기화
+      // 저장 성공 시 상태 초기화
       _ocrResult = null;
       _tempId = null;
       notifyListeners();
@@ -86,7 +83,7 @@ class OcrViewModel extends ChangeNotifier {
     }
   }
 
-  // 화면 초기화 (뒤로가기 등)
+  // 화면을 나갈 때 등 상태 초기화
   void clear() {
     _ocrResult = null;
     _tempId = null;

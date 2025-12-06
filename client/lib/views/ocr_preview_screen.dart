@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../viewmodels/user_view_model.dart';
 import '../viewmodels/folder_view_model.dart';
 import '../viewmodels/ocr_view_model.dart';
+import '../widgets/custom_buttons.dart';
 
 class OcrPreviewScreen extends StatefulWidget {
   const OcrPreviewScreen({super.key});
@@ -17,6 +18,8 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   final TextEditingController _problemController = TextEditingController();
   final TextEditingController _answerController = TextEditingController();
   final TextEditingController _memoController = TextEditingController();
+
+  // 폴더 생성을 위한 색상 팔레트 (여기서도 폴더 추가 가능)
   final List<Color> _folderColors = const [
     Color(0xFF1E2B58), // 네이비
     Color(0xFF2EBA9F), // 민트
@@ -26,7 +29,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     Color(0xFF546E7A), // 그레이
   ];
 
-  // 선지들을 관리할 컨트롤러 리스트
+  // 선지들을 관리할 컨트롤러 리스트 (동적 생성)
   List<TextEditingController> _choiceControllers = [];
 
   // 데이터가 초기화되었는지 확인하는 플래그
@@ -36,7 +39,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
   @override
   void initState() {
     super.initState();
-    // 폴더 목록 로드
+    // 저장할 폴더 선택을 위해 폴더 목록 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final username = context.read<UserViewModel>().username;
       context.read<FolderViewModel>().loadFolders(username);
@@ -48,7 +51,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     _problemController.dispose();
     _answerController.dispose();
     _memoController.dispose();
-    // 선지 컨트롤러들도 해제
+    // 리스트에 있는 모든 컨트롤러 해제
     for (var controller in _choiceControllers) {
       controller.dispose();
     }
@@ -61,9 +64,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     final userVM = context.read<UserViewModel>();
     final folderVM = context.watch<FolderViewModel>();
 
-    // ---------------------------------------------------------
-    // 1. 에러 발생 시 화면
-    // ---------------------------------------------------------
+    // 에러 발생 시 화면
     if (ocrVM.errorMessage != null) {
       _isDataLoaded = false; // 에러 나면 데이터 로드 상태 초기화
       return Scaffold(
@@ -86,9 +87,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
       );
     }
 
-    // ---------------------------------------------------------
-    // 2. 로딩 중 화면 (분석 중)
-    // ---------------------------------------------------------
+    // 로딩 중 화면 (이미지 업로드 및 분석)
     if (ocrVM.isUploading) {
       return const Scaffold(
         body: Center(
@@ -107,15 +106,14 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
       );
     }
 
-    // ---------------------------------------------------------
-    // 3. 촬영 전 (카메라/갤러리 선택) - 디자인 프로토타입 3번째 장 스타일
-    // ---------------------------------------------------------
+    // 촬영 전 (카메라/갤러리 선택)
+    // * MainNavScreen에서 들어오지 않고 직접 호출되었을 경우에 보임
     if (ocrVM.ocrResult == null) {
       _isDataLoaded = false; // 데이터 로드 상태 초기화
       _choiceControllers.clear(); // 컨트롤러 초기화
 
       return Scaffold(
-        backgroundColor: Colors.grey.shade600, // 배경 어둡게 처리 (모달 느낌)
+        backgroundColor: Colors.grey.shade600,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -136,7 +134,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
               ),
             ),
             const SizedBox(height: 40),
-            // 하단 흰색 영역
+            // 하단 버튼 영역
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(30),
@@ -150,53 +148,19 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
               child: Column(
                 children: [
                   const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E2B58), // 네이비
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () => ocrVM.pickAndScanImage(
-                        userVM.username,
-                        ImageSource.camera,
-                      ),
-                      child: const Text(
-                        "카메라로 스캔",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                  PrimaryButton(
+                    text: "카메라로 스캔",
+                    onPressed: () => ocrVM.pickAndScanImage(
+                      userVM.username,
+                      ImageSource.camera,
                     ),
                   ),
                   const SizedBox(height: 15),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEBEFF5), // 연한 회색
-                        foregroundColor: Colors.black87,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () => ocrVM.pickAndScanImage(
-                        userVM.username,
-                        ImageSource.gallery,
-                      ),
-                      child: const Text(
-                        "갤러리에서 선택",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                  SecondaryButton(
+                    text: "갤러리에서 선택",
+                    onPressed: () => ocrVM.pickAndScanImage(
+                      userVM.username,
+                      ImageSource.gallery,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -208,15 +172,13 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
       );
     }
 
-    // ---------------------------------------------------------
-    // 4. 결과 확인 및 수정 화면 (Form)
-    // ---------------------------------------------------------
+    // 결과 확인 및 수정 화면 (Form)
 
-    // OCR 결과가 처음 들어왔을 때만 컨트롤러에 값을 채워넣습니다.
+    // OCR 결과가 처음 들어왔을 때만 컨트롤러에 값을 채워넣음.
     if (!_isDataLoaded && ocrVM.ocrResult != null) {
       _problemController.text = ocrVM.ocrResult!['problem'] ?? "";
 
-      // 선지 컨트롤러 초기화
+      // 선지 컨트롤러 초기화 (OCR 선지 개수만큼 생성)
       final choices = List<String>.from(ocrVM.ocrResult!['choices'] ?? []);
       _choiceControllers = choices
           .map((c) => TextEditingController(text: c))
@@ -225,10 +187,11 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
       _isDataLoaded = true; // 로드 완료 표시
     }
 
-    // 폴더 자동 선택
+    // 폴더 자동 선택 (기존 선택값이 없으면 첫 번째 폴더 선택)
     if (_selectedFolderId == null && folderVM.folders.isNotEmpty) {
       _selectedFolderId = folderVM.folders[0].id;
     } else if (_selectedFolderId != null && folderVM.folders.isNotEmpty) {
+      // 선택했던 ID가 유효한지 체크
       final exists = folderVM.folders.any((f) => f.id == _selectedFolderId);
       if (!exists) {
         _selectedFolderId = folderVM.folders[0].id;
@@ -290,7 +253,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 선지 수정 영역 (동적 리스트)
+                  // 2. 선지 수정 영역 (동적 리스트)
                   if (_choiceControllers.isNotEmpty) ...[
                     const Text(
                       "선지 목록",
@@ -351,7 +314,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                     const SizedBox(height: 20),
                   ],
 
-                  // 2. 문제 정답
+                  // 3. 문제 정답
                   const Text(
                     "정답",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -373,7 +336,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 3. 저장 폴더
+                  // 4. 저장 폴더
                   const Text(
                     "저장 폴더",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -396,7 +359,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                               hint: const Text(
                                 "폴더 선택",
                                 style: TextStyle(fontSize: 14),
-                              ), // 힌트 텍스트 추가
+                              ),
                               items: folderVM.folders.map((folder) {
                                 return DropdownMenuItem(
                                   value: folder.id,
@@ -418,7 +381,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
 
                       // 폴더 추가 버튼 (오른쪽)
                       SizedBox(
-                        height: 50, // 높이를 드롭다운 박스와 맞춤
+                        height: 50,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1E2B58),
@@ -440,38 +403,8 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  // const Text(
-                  //   "저장 폴더",
-                  //   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  // ),
-                  // const SizedBox(height: 8),
-                  // _buildGrayInputContainer(
-                  //   child: DropdownButtonHideUnderline(
-                  //     child: DropdownButtonFormField<int>(
-                  //       decoration: const InputDecoration(
-                  //         border: InputBorder.none,
-                  //         contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                  //         // labelText: "저장 폴더",
-                  //         // floatingLabelBehavior: FloatingLabelBehavior.always,
-                  //         // contentPadding: EdgeInsets.zero,
-                  //       ),
-                  //       value: _selectedFolderId,
-                  //       isExpanded: true,
-                  //       items: folderVM.folders.map((folder) {
-                  //         return DropdownMenuItem(
-                  //           value: folder.id,
-                  //           child: Text(folder.name),
-                  //         );
-                  //       }).toList(),
-                  //       onChanged: (val) {
-                  //         setState(() => _selectedFolderId = val);
-                  //       },
-                  //     ),
-                  //   ),
-                  // ),
-                  // const SizedBox(height: 20),
 
-                  // 4. 메모
+                  // 5. 메모
                   const Text(
                     "메모",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -500,109 +433,70 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
             ),
           ),
 
-          // 하단 버튼 영역
+          // 하단 버튼 영역 (취소 / 저장)
           Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                // 수정하기 버튼 (회색)
+                // 취소 버튼
                 Expanded(
-                  child: SizedBox(
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEBEFF5),
-                        foregroundColor: Colors.black87,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        // [ver1] 사실 지금 화면이 수정 화면이므로, 키보드를 내리거나 하는 동작
-
-                        // FocusScope.of(context).unfocus();
-                        // ScaffoldMessenger.of(context).showSnackBar(
-                        //   const SnackBar(content: Text("내용을 수정해주세요.")),
-                        // );
-
-                        // [ver2] 초기화 로직
-                        ocrVM.clear();
-                        _problemController.clear();
-                        _answerController.clear();
-                        _memoController.clear();
-                        setState(() => _isDataLoaded = false);
-                      },
-                      child: const Text(
-                        "취소",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  child: SecondaryButton(
+                    text: "취소",
+                    onPressed: () {
+                      // 초기화 로직
+                      ocrVM.clear();
+                      _problemController.clear();
+                      _answerController.clear();
+                      _memoController.clear();
+                      setState(() => _isDataLoaded = false);
+                    },
                   ),
                 ),
                 const SizedBox(width: 15),
-                // 저장하기 버튼 (네이비)
+                // 저장하기 버튼
                 Expanded(
-                  child: SizedBox(
-                    height: 55,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E2B58),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        if (_selectedFolderId == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("폴더를 선택해주세요")),
-                          );
-                          return;
-                        }
-                        if (_answerController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("정답을 입력해주세요")),
-                          );
-                          return;
-                        }
-
-                        // 수정된 선지 리스트 수집
-                        List<String> finalChoices = _choiceControllers
-                            .map((c) => c.text)
-                            .toList();
-
-                        // 저장 요청
-                        final success = await ocrVM.saveProblem(
-                          userVM.username,
-                          _selectedFolderId!,
-                          _answerController.text,
-                          _problemController.text, // 수정된 문제 텍스트
-                          finalChoices, // 수정된 선지 리스트 (참고: API가 지원해야 저장됨)
-                          _memoController.text,
-                          // []
+                  child: PrimaryButton(
+                    text: "저장하기",
+                    onPressed: () async {
+                      if (_selectedFolderId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("폴더를 선택해주세요")),
                         );
+                        return;
+                      }
+                      if (_answerController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("정답을 입력해주세요")),
+                        );
+                        return;
+                      }
 
-                        if (success && context.mounted) {
-                          await folderVM.loadFolders(userVM.username);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("저장 완료!")),
-                          );
-                          Navigator.of(
-                            context,
-                          ).popUntil((route) => route.isFirst);
-                        }
-                      },
-                      child: const Text(
-                        "저장하기",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                      // 수정된 선지 리스트 수집
+                      List<String> finalChoices = _choiceControllers
+                          .map((c) => c.text)
+                          .toList();
+
+                      // 저장 요청
+                      final success = await ocrVM.saveProblem(
+                        userVM.username,
+                        _selectedFolderId!,
+                        _answerController.text,
+                        _problemController.text,
+                        finalChoices,
+                        _memoController.text,
+                      );
+
+                      if (success && context.mounted) {
+                        await folderVM.loadFolders(userVM.username);
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(const SnackBar(content: Text("저장 완료!")));
+                        // 첫 화면(홈)까지 팝
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                      }
+                    },
                   ),
                 ),
               ],
@@ -613,7 +507,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     );
   }
 
-  // 회색 배경의 입력 컨테이너 헬퍼
+  // 회색 배경의 입력 컨테이너 UI 헬퍼
   Widget _buildGrayInputContainer({required Widget child, double? height}) {
     return Container(
       height: height,
@@ -627,7 +521,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
     );
   }
 
-  // 폴더 추가 팝업 함수
+  // OCR 화면 내에서 폴더를 바로 추가할 수 있는 다이얼로그
   void _showAddFolderDialog(BuildContext context) {
     final controller = TextEditingController();
     int selectedColorIndex = 0; // 기본 색상 인덱스
@@ -679,7 +573,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 색상 선택 원들
+                  // 색상 선택 UI
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(_folderColors.length, (index) {
@@ -740,7 +634,7 @@ class _OcrPreviewScreenState extends State<OcrPreviewScreen> {
                       if (success && mounted) {
                         Navigator.pop(context); // 팝업 닫기
 
-                        // [중요] 생성된 폴더를 드롭다운에서 바로 선택하도록 설정
+                        // 생성된 폴더를 드롭다운에서 바로 선택하도록 설정
                         if (folderVM.folders.isNotEmpty) {
                           setState(() {
                             _selectedFolderId = folderVM.folders.last.id;

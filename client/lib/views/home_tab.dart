@@ -17,6 +17,7 @@ class _HomeTabState extends State<HomeTab> {
   @override
   void initState() {
     super.initState();
+    // 화면 로드 시 최신 데이터(폴더 목록, 통계) 조회
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final username = context.read<UserViewModel>().username;
       context.read<FolderViewModel>().loadFolders(username);
@@ -54,7 +55,7 @@ class _HomeTabState extends State<HomeTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 일러스트 및 메인 텍스트
+            // 1. 메인 배너 영역
             const SizedBox(height: 10),
             Center(
               child: Column(
@@ -83,7 +84,7 @@ class _HomeTabState extends State<HomeTab> {
             ),
             const SizedBox(height: 10),
 
-            // 2. 문제집 스캔하기 버튼 (메인 액션)
+            // 2. 메인 액션 버튼 (스캔)
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -109,7 +110,7 @@ class _HomeTabState extends State<HomeTab> {
             ),
             const SizedBox(height: 30),
 
-            // 3. 학습 대시보드
+            // 3. 학습 대시보드 (통계 카드)
             const Text(
               "학습 대시보드",
               style: TextStyle(
@@ -138,7 +139,7 @@ class _HomeTabState extends State<HomeTab> {
             ),
             const SizedBox(height: 30),
 
-            // 4. 바로가기 메뉴
+            // 4. 바로가기 메뉴 (오답노트, 통계)
             const Text(
               "바로가기",
               style: TextStyle(
@@ -150,7 +151,7 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 15),
             InkWell(
               onTap: () {
-                // 오답노트 모드로 이동 (folderId: -1, isWrongNoteMode: true)
+                // 오답노트 모드(id: -1)로 문제 풀이 화면 이동
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -165,8 +166,8 @@ class _HomeTabState extends State<HomeTab> {
               child: _buildShortcutCard(
                 "오답노트",
                 "틀린 문제를 다시 풀어보세요",
-                Icons.edit, // [수정] 연필 아이콘
-                const Color(0xFF009688), // (홈 화면 디자인상 초록색 유지, 원하면 빨강으로 변경 가능)
+                Icons.edit,
+                const Color(0xFF009688),
               ),
             ),
             const SizedBox(height: 10),
@@ -184,18 +185,13 @@ class _HomeTabState extends State<HomeTab> {
                 const Color(0xFF1E2B58),
               ),
             ),
-            // _buildShortcutCard(
-            //   "학습 통계",
-            //   "나의 학습 현황을 확인하세요",
-            //   Icons.bar_chart,
-            //   const Color(0xFF1E2B58),
-            // ),
           ],
         ),
       ),
     );
   }
 
+  // 대시보드 카드 위젯 헬퍼
   Widget _buildDashboardCard(
     String title,
     String value,
@@ -245,6 +241,7 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  // 바로가기 카드 위젯 헬퍼
   Widget _buildShortcutCard(
     String title,
     String subtitle,

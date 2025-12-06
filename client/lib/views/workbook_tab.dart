@@ -13,7 +13,7 @@ class WorkbookTab extends StatefulWidget {
 }
 
 class _WorkbookTabState extends State<WorkbookTab> {
-  // 폴더 색상 팔레트 정의
+  // 폴더 생성 시 선택 가능한 색상 팔레트
   final List<Color> _folderColors = const [
     Color(0xFF1E2B58), // 네이비
     Color(0xFF2EBA9F), // 민트
@@ -25,6 +25,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
   @override
   void initState() {
     super.initState();
+    // 화면 진입 시 폴더 목록 최신화
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final username = context.read<UserViewModel>().username;
       context.read<FolderViewModel>().loadFolders(username);
@@ -55,18 +56,20 @@ class _WorkbookTabState extends State<WorkbookTab> {
               ),
             ),
           ),
+          // 폴더 리스트 영역
           Expanded(
             child: folderVM.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: folderVM.folders.length + 1, // 오답노트용 1개
+                    // 폴더 목록 + 오답노트(1개)
+                    itemCount: folderVM.folders.length + 1,
                     itemBuilder: (context, index) {
                       // 0번 인덱스는 무조건 '오답노트' 폴더
                       if (index == 0) {
                         return InkWell(
                           onTap: () {
-                            // 오답노트 모드로 진입 (folderName에 특수 값 전달)
+                            // 오답노트 모드(id: -1, isWrongNoteMode: true)로 진입
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -77,6 +80,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                 ),
                               ),
                             ).then((_) {
+                              // 돌아왔을 때 목록 갱신
                               final username = context
                                   .read<UserViewModel>()
                                   .username;
@@ -134,6 +138,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                         );
                       }
 
+                      // 사용자 생성 폴더 (Index 1 이상)
                       final folder = folderVM.folders[index - 1];
                       // 서버에서 받은 Hex String -> Color 객체 변환
                       final colorInt = int.parse(folder.color);
@@ -141,6 +146,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
 
                       return InkWell(
                         onTap: () {
+                          // 일반 문제 풀이 모드로 진입
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -208,6 +214,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                                 ],
                               ),
                               const Spacer(),
+                              // 더보기 메뉴 (수정/삭제)
                               PopupMenuButton<String>(
                                 icon: const Icon(
                                   Icons.more_horiz,
@@ -243,6 +250,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
           ),
         ],
       ),
+      // 플로팅 버튼: 새 폴더 추가
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF1E2B58),
         shape: const CircleBorder(),
@@ -252,6 +260,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
     );
   }
 
+  // 폴더 삭제 확인 다이얼로그
   void _deleteFolder(String username, int folderId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -276,6 +285,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
     }
   }
 
+  // 폴더 생성 및 수정 팝업
   void _showFolderDialog(BuildContext context, {Folder? folder}) {
     final isEdit = folder != null;
     final controller = TextEditingController(text: isEdit ? folder.name : '');
@@ -291,7 +301,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
     showDialog(
       context: context,
       builder: (context) {
-        // StatefulBuilder를 써야 다이얼로그 내부에서 setState가 먹힘
+        // 다이얼로그 내부 상태(색상 선택) 변경을 위해 StatefulBuilder 사용
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
@@ -390,7 +400,7 @@ class _WorkbookTabState extends State<WorkbookTab> {
                     ),
                   ),
                 ),
-                // 폴더 생성 버튼
+                // 폴더 생성or수정 버튼
                 TextButton(
                   onPressed: () async {
                     final name = controller.text.trim();
