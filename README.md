@@ -61,12 +61,12 @@
 - Pydantic  
 - requests
 
----
 
 ## 🗂 4. 프로젝트 구조
 
 ### 📱 Client 구조
 
+```
 client
 └── lib
     ├── models
@@ -93,4 +93,93 @@ client
     │   └── problem_card.dart
     ├── constants.dart
     └── main.dart
+```
 
+### 🖥 Server 구조
+
+```
+server
+├── routers
+│   ├── __init__.py
+│   ├── auth.py
+│   ├── folders.py
+│   ├── problems.py
+│   └── users.py
+├── utils
+│   ├── __init__.py
+│   └── ocr.py
+├── .env
+├── crud.py
+├── database.py
+├── main.py
+├── models.py
+├── requirements.txt
+├── schemas.py
+└── shared_data.py
+```
+
+## 🔗 5. REST API 명세 (요약)
+
+### 🔐 사용자 인증
+| Method | Endpoint | 설명 |
+|-------|----------|------|
+| POST | `/register` | 회원가입 |
+| POST | `/login` | 로그인 |
+
+### 📁 폴더 관리
+| Method | Endpoint | 설명 |
+|-------|----------|------|
+| GET | `/folders?username=` | 폴더 목록 조회 |
+| POST | `/folders` | 폴더 생성 |
+| PUT | `/folders/{folder_id}` | 폴더 수정 |
+| DELETE | `/folders/{folder_id}` | 폴더 삭제 |
+
+### 📄 문제 관리
+| Method | Endpoint | 설명 |
+|-------|----------|------|
+| POST | `/ocr` | OCR 분석 요청 |
+| POST | `/problems` | 문제 저장 |
+| GET | `/problems?folder_id` | 폴더별 문제 조회 |
+| PUT | `/problems/{id}` | 문제 수정 |
+| DELETE | `/problems/{id}` | 문제 삭제 |
+
+### ⭐ 오답노트
+| Method | Endpoint | 설명 |
+|-------|----------|------|
+| GET | `/wrong-notes?username` | 전체 오답 조회 |
+| PATCH | `/problems/wrong-note` | 다중 오답 상태 업데이트 |
+
+### 📊 통계/히스토리
+| Method | Endpoint | 설명 |
+|-------|----------|------|
+| PUT | `/user/stats` | 통계 업데이트 |
+| POST | `/history` | 점수 기록 저장 |
+| GET | `/history?username` | 최근 점수 기록 조회 |
+
+---
+
+## 🧪 6. 로컬 실행 방법
+
+### 🔧 환경 변수 설정 필요 
+```
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+CLOVA_OCR_URL=
+CLOVA_OCR_SECRET=
+```
+
+### 🔧 Server 실행
+```
+cd server
+.\.venv\Scripts\Activate.ps1
+uvicorn main:app --reload
+```
+
+### 🔧 client 실행 
+```
+cd client 
+flutter run 
+```
